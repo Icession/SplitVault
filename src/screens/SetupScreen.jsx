@@ -14,138 +14,84 @@ import {
 import { COLORS, formatPeso } from '../constants';
 import { saveWallets, setIsSetup } from '../storage/storage';
 
-// ─── COMPONENT ────────────────────────────────────────
-// onComplete is a function passed from App.js that tells
-// the app "setup is done, show the main tabs now"
 export default function SetupScreen({ onComplete }) {
 
-  // ─── STATE ──────────────────────────────────────────
-  // useState stores values that can change and re-render the UI
-  // These track what the user types in the input fields
   const [totalAmount, setTotalAmount] = useState('');
-  const [savingsPercent, setSavingsPercent] = useState('50');
 
-  // ─── DERIVED VALUES ─────────────────────────────────
-  // We calculate the split preview in real time as the user types
-  // parseFloat converts the string input into a number
-  const total = parseFloat(totalAmount) || 0;
-  const savingsPct = parseFloat(savingsPercent) || 0;
-  const expensePct = 100 - savingsPct;
-  const savingsAmount = (total * savingsPct) / 100;
-  const expenseAmount = (total * expensePct) / 100;
+  const parsedAmount = parseFloat(totalAmount) || 0;
 
-  // ─── HANDLE SETUP ───────────────────────────────────
-  // This runs when the user taps "Start Using SplitVault"
   const handleSetup = async () => {
-
-    if (!totalAmount || total <= 0) {
+    if (!totalAmount || parsedAmount <= 0) {
       Alert.alert('Invalid Amount', 'Please enter a valid starting amount.');
-      return;
-    }
-    if (savingsPct < 0 || savingsPct > 100) {
-      Alert.alert('Invalid Split', 'Savings percentage must be between 0 and 100.');
       return;
     }
 
     await saveWallets({
-      savings: savingsAmount,
-      expense: expenseAmount,
+      savings: parsedAmount,
+      expense: 0,
     });
 
     await setIsSetup();
-
     onComplete();
   };
 
-  // ─── UI ─────────────────────────────────────────────
   return (
-    // KeyboardAvoidingView pushes the screen up when keyboard appears
-    // so the input fields are never hidden behind the keyboard
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
 
-        {/* ── HEADER ───────────────────────────────── */}
         <View style={styles.header}>
           <Text style={styles.emoji}>💰</Text>
           <Text style={styles.title}>Welcome to SplitVault</Text>
           <Text style={styles.subtitle}>
-            Let's set up your wallets. Enter your total funds and we'll split them for you.
+            Enter your total funds to get started. Transfer to Expense when you're ready to spend.
           </Text>
         </View>
 
-        {/* ── TOTAL AMOUNT INPUT ───────────────────── */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Total Amount (₱)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. 10000"
-            placeholderTextColor={COLORS.subtext}
-            keyboardType="numeric"
-            value={totalAmount}
-            onChangeText={setTotalAmount}
-          />
-        </View>
+        <Text style={styles.label}>Total Amount (₱)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g. 10000"
+          placeholderTextColor={COLORS.subtext}
+          keyboardType="numeric"
+          value={totalAmount}
+          onChangeText={setTotalAmount}
+        />
 
-        {/* ── SAVINGS PERCENT INPUT ────────────────── */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Savings Percentage (%)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. 50"
-            placeholderTextColor={COLORS.subtext}
-            keyboardType="numeric"
-            value={savingsPercent}
-            onChangeText={setSavingsPercent}
-          />
-          <Text style={styles.hint}>
-            Expense will get {expensePct}%
-          </Text>
-        </View>
-
-        {/* ── LIVE PREVIEW ─────────────────────────── */}
-        {/* Only shows when user has typed a valid amount */}
-        {total > 0 && (
+        {parsedAmount > 0 && (
           <View style={styles.previewContainer}>
-            <Text style={styles.previewTitle}>Your Wallets Preview</Text>
-
+            <Text style={styles.previewTitle}>Your Starting Wallets</Text>
             <View style={styles.previewRow}>
-              {/* Savings wallet card */}
               <View style={[styles.previewCard, { borderColor: COLORS.savings }]}>
                 <Text style={styles.previewEmoji}>🐷</Text>
                 <Text style={styles.previewLabel}>Savings</Text>
                 <Text style={[styles.previewAmount, { color: COLORS.savings }]}>
-                  {formatPeso(savingsAmount)}
+                  {formatPeso(parsedAmount)}
                 </Text>
-                <Text style={styles.previewPct}>{savingsPct}%</Text>
               </View>
-
-              {/* Expense wallet card */}
               <View style={[styles.previewCard, { borderColor: COLORS.expense }]}>
                 <Text style={styles.previewEmoji}>💳</Text>
                 <Text style={styles.previewLabel}>Expense</Text>
                 <Text style={[styles.previewAmount, { color: COLORS.expense }]}>
-                  {formatPeso(expenseAmount)}
+                  {formatPeso(0)}
                 </Text>
-                <Text style={styles.previewPct}>{expensePct}%</Text>
               </View>
             </View>
+            <Text style={styles.previewHint}>
+              💡 Transfer funds to your Expense wallet when you're ready to spend.
+            </Text>
           </View>
         )}
 
-        {/* ── SUBMIT BUTTON ────────────────────────── */}
         <TouchableOpacity
-          style={[
-            styles.button,
-            { opacity: total > 0 ? 1 : 0.5 }
-          ]}
+          style={[styles.button, { opacity: parsedAmount > 0 ? 1 : 0.5 }]}
           onPress={handleSetup}
-          disabled={total <= 0}
+          disabled={parsedAmount <= 0}
         >
           <Text style={styles.buttonText}>Start Using SplitVault 🚀</Text>
         </TouchableOpacity>
@@ -155,15 +101,12 @@ export default function SetupScreen({ onComplete }) {
   );
 }
 
-// ─── STYLES ───────────────────────────────────────────
-// StyleSheet.create is React Native's way of writing CSS
-// All sizes are in density-independent pixels (dp), not px
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  scrollContent: {
+  content: {
     padding: 24,
     paddingTop: 60,
     paddingBottom: 40,
@@ -189,9 +132,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
-  inputGroup: {
-    marginBottom: 20,
-  },
   label: {
     fontSize: 14,
     fontWeight: '600',
@@ -206,26 +146,22 @@ const styles = StyleSheet.create({
     padding: 14,
     fontSize: 16,
     color: COLORS.text,
-  },
-  hint: {
-    fontSize: 12,
-    color: COLORS.subtext,
-    marginTop: 6,
-    marginLeft: 4,
+    marginBottom: 24,
   },
   previewContainer: {
-    marginBottom: 28,
+    marginBottom: 32,
   },
   previewTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: COLORS.subtext,
-    marginBottom: 12,
     textAlign: 'center',
+    marginBottom: 12,
   },
   previewRow: {
     flexDirection: 'row',
     gap: 12,
+    marginBottom: 12,
   },
   previewCard: {
     flex: 1,
@@ -247,11 +183,12 @@ const styles = StyleSheet.create({
   previewAmount: {
     fontSize: 16,
     fontWeight: '700',
-    marginBottom: 2,
   },
-  previewPct: {
+  previewHint: {
     fontSize: 12,
     color: COLORS.subtext,
+    textAlign: 'center',
+    lineHeight: 18,
   },
   button: {
     backgroundColor: COLORS.savings,

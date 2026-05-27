@@ -14,54 +14,46 @@ import { getWallets, getTransactions } from '../storage/storage';
 
 export default function HomeScreen({ navigation }) {
 
-  // ─── STATE ──────────────────────────────────────────
   const [wallets, setWallets] = useState({ savings: 0, expense: 0 });
   const [transactions, setTransactions] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
-  // ─── LOAD DATA ──────────────────────────────────────
-  // useFocusEffect runs every time this screen comes into focus
-  // This means data refreshes when user navigates back to Home
-  // useCallback prevents unnecessary re-renders
-  const loadData = useCallback(async () => {
+  useFocusEffect(
+    useCallback(() => {
+      const fetchData = async () => {
+        const w = await getWallets();
+        const t = await getTransactions();
+        setWallets(w);
+        setTransactions(t.slice(0, 5));
+      };
+      fetchData();
+    }, [])
+  );
+
+  const onRefresh = async () => {
+    setRefreshing(true);
     const w = await getWallets();
     const t = await getTransactions();
     setWallets(w);
-    // Only show the 5 most recent transactions on home screen
     setTransactions(t.slice(0, 5));
-  }, []);
-
-  useFocusEffect(loadData);
-
-  // ─── PULL TO REFRESH ────────────────────────────────
-  // When user pulls down on the screen it reloads the data
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadData();
     setRefreshing(false);
   };
 
-  // ─── BALANCE WARNING ────────────────────────────────
-  // Returns a warning level based on how low the expense wallet is
-  // compared to the total balance
   const total = wallets.savings + wallets.expense;
-  const expenseRatio = total > 0 ? wallets.expense / total : 1;
 
   const getWarningLevel = () => {
-    if (expenseRatio <= 0.10) return 'danger';   // below 10%
-    if (expenseRatio <= 0.25) return 'warning';  // below 25%
+    if (wallets.expense === 0) return 'danger';
+    if (wallets.expense < 500) return 'warning';
     return 'safe';
   };
 
   const warningLevel = getWarningLevel();
 
-  // ─── UI ─────────────────────────────────────────────
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={styles.content}
       refreshControl={
-        // This enables the pull-to-refresh spinner
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
@@ -70,14 +62,11 @@ export default function HomeScreen({ navigation }) {
       }
     >
 
-      {/* ── HEADER ───────────────────────────────────── */}
       <View style={styles.header}>
         <Text style={styles.greeting}>SplitVault 💰</Text>
         <Text style={styles.subGreeting}>Your wallet overview</Text>
       </View>
 
-      {/* ── LOW BALANCE WARNING BANNER ───────────────── */}
-      {/* Only renders if wallet is low — conditional rendering */}
       {warningLevel !== 'safe' && (
         <View style={[
           styles.warningBanner,
@@ -85,16 +74,13 @@ export default function HomeScreen({ navigation }) {
         ]}>
           <Text style={styles.warningText}>
             {warningLevel === 'danger'
-              ? '🚨 Expense wallet is critically low (below 10%)'
-              : '⚠️ Expense wallet is running low (below 25%)'}
+              ? '🚨 Expense wallet is empty — transfer funds to start spending'
+              : '⚠️ Expense wallet is running low'}
           </Text>
         </View>
       )}
 
-      {/* ── WALLET CARDS ─────────────────────────────── */}
       <View style={styles.walletRow}>
-
-        {/* Savings Wallet Card */}
         <View style={[styles.walletCard, { borderColor: COLORS.savings }]}>
           <Text style={styles.walletEmoji}>🐷</Text>
           <Text style={styles.walletLabel}>Savings</Text>
@@ -103,7 +89,6 @@ export default function HomeScreen({ navigation }) {
           </Text>
         </View>
 
-        {/* Expense Wallet Card */}
         <View style={[styles.walletCard, {
           borderColor: warningLevel === 'danger'
             ? COLORS.danger
@@ -123,80 +108,63 @@ export default function HomeScreen({ navigation }) {
             {formatPeso(wallets.expense)}
           </Text>
         </View>
-
       </View>
 
-      {/* ── TOTAL BALANCE ────────────────────────────── */}
       <View style={styles.totalCard}>
         <Text style={styles.totalLabel}>Total Balance</Text>
         <Text style={styles.totalAmount}>{formatPeso(total)}</Text>
       </View>
 
-      {/* ── BUDGET GAUGE ─────────────────────────────── */}
-      {/* Shows a visual bar of how much of expense wallet remains */}
+      {/* Savings vs Expense Split Bar */}
       <View style={styles.gaugeContainer}>
         <View style={styles.gaugeLabelRow}>
-          <Text style={styles.gaugeLabel}>Expense Wallet Health</Text>
-          <Text style={styles.gaugePercent}>
-            {Math.round(expenseRatio * 100)}%
-          </Text>
+          <Text style={styles.gaugeLabel}>🐷 Savings</Text>
+          <Text style={styles.gaugeLabel}>💳 Expense</Text>
         </View>
-
-        {/* The grey track */}
         <View style={styles.gaugeTrack}>
-          {/* The colored fill — width is a percentage string */}
           <View style={[
             styles.gaugeFill,
             {
-              width: `${Math.round(expenseRatio * 100)}%`,
-              backgroundColor: warningLevel === 'danger'
-                ? COLORS.danger
-                : warningLevel === 'warning'
-                ? COLORS.warning
-                : COLORS.expense,
+              width: total > 0 ? `${Math.round((wallets.savings / total) * 100)}%` : '0%',
+              backgroundColor: COLORS.savings,
+            }
+          ]} />
+          <View style={[
+            styles.gaugeFill,
+            {
+              width: total > 0 ? `${Math.round((wallets.expense / total) * 100)}%` : '0%',
+              backgroundColor: COLORS.expense,
             }
           ]} />
         </View>
+        <View style={styles.gaugeLabelRow}>
+          <Text style={[styles.gaugePercent, { color: COLORS.savings }]}>
+            {total > 0 ? Math.round((wallets.savings / total) * 100) : 0}%
+          </Text>
+          <Text style={[styles.gaugePercent, { color: COLORS.expense }]}>
+            {total > 0 ? Math.round((wallets.expense / total) * 100) : 0}%
+          </Text>
+        </View>
       </View>
 
-      {/* ── QUICK ACTION BUTTONS ─────────────────────── */}
-      {/* Shortcuts to other tabs directly from Home */}
       <View style={styles.actionsRow}>
         <TouchableOpacity
-          style={styles.actionBtn}
-          // navigation.navigate goes to a tab by name
+          style={[styles.actionBtn, { borderColor: COLORS.danger }]}
           onPress={() => navigation.navigate('AddExpense')}
         >
           <Text style={styles.actionEmoji}>➖</Text>
-          <Text style={styles.actionLabel}>Expense</Text>
+          <Text style={[styles.actionLabel, { color: COLORS.danger }]}>Expense</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.actionBtn}
+          style={[styles.actionBtn, { borderColor: COLORS.savings }]}
           onPress={() => navigation.navigate('AddIncome')}
         >
           <Text style={styles.actionEmoji}>➕</Text>
-          <Text style={styles.actionLabel}>Income</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.actionBtn}
-          onPress={() => navigation.navigate('Transfer')}
-        >
-          <Text style={styles.actionEmoji}>🔁</Text>
-          <Text style={styles.actionLabel}>Transfer</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.actionBtn}
-          onPress={() => navigation.navigate('Goals')}
-        >
-          <Text style={styles.actionEmoji}>🎯</Text>
-          <Text style={styles.actionLabel}>Goals</Text>
+          <Text style={[styles.actionLabel, { color: COLORS.savings }]}>Income</Text>
         </TouchableOpacity>
       </View>
 
-      {/* ── RECENT TRANSACTIONS ──────────────────────── */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Recent Transactions</Text>
@@ -205,15 +173,12 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* If no transactions yet, show empty state */}
         {transactions.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyEmoji}>📭</Text>
             <Text style={styles.emptyText}>No transactions yet</Text>
           </View>
         ) : (
-          // Map turns the array into a list of UI elements
-          // Each item needs a unique key prop for React to track it
           transactions.map((tx, index) => (
             <View key={tx.id || index} style={styles.txRow}>
               <Text style={styles.txEmoji}>{tx.emoji || '💸'}</Text>
@@ -223,7 +188,7 @@ export default function HomeScreen({ navigation }) {
               </View>
               <Text style={[
                 styles.txAmount,
-                { color: tx.type === 'expense' ? COLORS.danger : COLORS.expense }
+                { color: tx.type === 'expense' ? COLORS.danger : COLORS.savings }
               ]}>
                 {tx.type === 'expense' ? '-' : '+'}{formatPeso(tx.amount)}
               </Text>
@@ -236,7 +201,6 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
-// ─── STYLES ───────────────────────────────────────────
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -328,44 +292,40 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: COLORS.subtext,
   },
-  gaugePercent: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
   gaugeTrack: {
     height: 10,
     backgroundColor: COLORS.border,
     borderRadius: 999,
-    overflow: 'hidden',     // clips the fill bar to rounded corners
+    overflow: 'hidden',
+    flexDirection: 'row',
   },
   gaugeFill: {
     height: '100%',
-    borderRadius: 999,
+  },
+  gaugePercent: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   actionsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 12,
     marginBottom: 24,
   },
   actionBtn: {
     flex: 1,
     backgroundColor: COLORS.card,
     borderRadius: 12,
-    padding: 12,
+    padding: 16,
     alignItems: 'center',
-    marginHorizontal: 4,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    borderWidth: 1.5,
   },
   actionEmoji: {
-    fontSize: 20,
+    fontSize: 22,
     marginBottom: 4,
   },
   actionLabel: {
-    fontSize: 11,
-    color: COLORS.subtext,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '700',
   },
   section: {
     marginBottom: 16,
