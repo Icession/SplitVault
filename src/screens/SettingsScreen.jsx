@@ -7,11 +7,11 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-
-import { COLORS, formatPeso } from '../constants';
-import { getWallets, saveWallets, saveTransactions, saveGoals, setIsSetup } from '../storage/storage';
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { STORAGE_KEYS } from '../constants';
+
+import { COLORS, formatPeso, STORAGE_KEYS } from '../constants';
+import { getWallets, saveTransactions, saveGoals } from '../storage/storage';
 
 export default function SettingsScreen({ onReset }) {
 
@@ -94,56 +94,61 @@ export default function SettingsScreen({ onReset }) {
         <Text style={styles.subtitle}>Manage your SplitVault data</Text>
       </View>
 
-      {/* Wallet Summary */}
       <View style={styles.summaryCard}>
         <Text style={styles.summaryTitle}>Current Balance</Text>
         <Text style={styles.summaryTotal}>{formatPeso(total)}</Text>
         <View style={styles.summaryRow}>
-          <Text style={styles.summarySub}>
-            🐷 {formatPeso(wallets.savings)}
-          </Text>
-          <Text style={styles.summarySub}>
-            💳 {formatPeso(wallets.expense)}
-          </Text>
+          <View style={styles.summaryItem}>
+            <Ionicons name="wallet" size={14} color={COLORS.savings} />
+            <Text style={styles.summarySub}>{formatPeso(wallets.savings)}</Text>
+          </View>
+          <View style={styles.summaryItem}>
+            <Ionicons name="card" size={14} color={COLORS.expense} />
+            <Text style={styles.summarySub}>{formatPeso(wallets.expense)}</Text>
+          </View>
         </View>
       </View>
 
-      {/* Data Management Section */}
       <Text style={styles.sectionLabel}>Data Management</Text>
 
       <View style={styles.card}>
         <TouchableOpacity style={styles.row} onPress={handleClearTransactions}>
           <View style={styles.rowLeft}>
-            <Text style={styles.rowEmoji}>🗂️</Text>
+            <View style={[styles.rowIconContainer, { backgroundColor: COLORS.savings + '22' }]}>
+              <Ionicons name="receipt-outline" size={18} color={COLORS.savings} />
+            </View>
             <View>
               <Text style={styles.rowTitle}>Clear Transaction History</Text>
               <Text style={styles.rowSub}>Removes all recorded transactions</Text>
             </View>
           </View>
-          <Text style={styles.rowArrow}>›</Text>
+          <Ionicons name="chevron-forward" size={18} color={COLORS.subtext} />
         </TouchableOpacity>
 
         <View style={styles.divider} />
 
         <TouchableOpacity style={styles.row} onPress={handleClearGoals}>
           <View style={styles.rowLeft}>
-            <Text style={styles.rowEmoji}>🎯</Text>
+            <View style={[styles.rowIconContainer, { backgroundColor: COLORS.savings + '22' }]}>
+              <Ionicons name="flag-outline" size={18} color={COLORS.savings} />
+            </View>
             <View>
               <Text style={styles.rowTitle}>Clear Savings Goals</Text>
               <Text style={styles.rowSub}>Removes all saved goals</Text>
             </View>
           </View>
-          <Text style={styles.rowArrow}>›</Text>
+          <Ionicons name="chevron-forward" size={18} color={COLORS.subtext} />
         </TouchableOpacity>
       </View>
 
-      {/* App Info Section */}
       <Text style={styles.sectionLabel}>About</Text>
 
       <View style={styles.card}>
         <View style={styles.row}>
           <View style={styles.rowLeft}>
-            <Text style={styles.rowEmoji}>💰</Text>
+            <View style={[styles.rowIconContainer, { backgroundColor: COLORS.savings + '22' }]}>
+              <Ionicons name="information-circle-outline" size={18} color={COLORS.savings} />
+            </View>
             <View>
               <Text style={styles.rowTitle}>SplitVault</Text>
               <Text style={styles.rowSub}>Version 1.0.0</Text>
@@ -155,7 +160,9 @@ export default function SettingsScreen({ onReset }) {
 
         <View style={styles.row}>
           <View style={styles.rowLeft}>
-            <Text style={styles.rowEmoji}>🇵🇭</Text>
+            <View style={[styles.rowIconContainer, { backgroundColor: COLORS.savings + '22' }]}>
+              <Ionicons name="cash-outline" size={18} color={COLORS.savings} />
+            </View>
             <View>
               <Text style={styles.rowTitle}>Currency</Text>
               <Text style={styles.rowSub}>Philippine Peso (₱)</Text>
@@ -164,11 +171,12 @@ export default function SettingsScreen({ onReset }) {
         </View>
       </View>
 
-      {/* Danger Zone */}
       <Text style={styles.sectionLabel}>Danger Zone</Text>
 
       <TouchableOpacity style={styles.resetBtn} onPress={handleReset}>
-        <Text style={styles.resetEmoji}>⚠️</Text>
+        <View style={[styles.rowIconContainer, { backgroundColor: COLORS.danger + '22' }]}>
+          <Ionicons name="warning-outline" size={18} color={COLORS.danger} />
+        </View>
         <View>
           <Text style={styles.resetTitle}>Reset App</Text>
           <Text style={styles.resetSub}>Clears all data and returns to setup</Text>
@@ -226,6 +234,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 20,
   },
+  summaryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   summarySub: {
     fontSize: 13,
     color: COLORS.subtext,
@@ -259,8 +272,12 @@ const styles = StyleSheet.create({
     gap: 12,
     flex: 1,
   },
-  rowEmoji: {
-    fontSize: 22,
+  rowIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   rowTitle: {
     fontSize: 14,
@@ -270,10 +287,6 @@ const styles = StyleSheet.create({
   },
   rowSub: {
     fontSize: 12,
-    color: COLORS.subtext,
-  },
-  rowArrow: {
-    fontSize: 20,
     color: COLORS.subtext,
   },
   divider: {
@@ -290,9 +303,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-  },
-  resetEmoji: {
-    fontSize: 24,
   },
   resetTitle: {
     fontSize: 15,

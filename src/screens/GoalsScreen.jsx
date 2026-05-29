@@ -10,9 +10,23 @@ import {
   Modal,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { COLORS, formatPeso } from '../constants';
 import { getGoals, saveGoals, getWallets } from '../storage/storage';
+
+const GOAL_ICONS = [
+  { name: 'home', label: 'Home' },
+  { name: 'airplane', label: 'Travel' },
+  { name: 'car', label: 'Car' },
+  { name: 'laptop', label: 'Laptop' },
+  { name: 'phone-portrait', label: 'Phone' },
+  { name: 'school', label: 'School' },
+  { name: 'heart', label: 'Health' },
+  { name: 'gift', label: 'Gift' },
+  { name: 'bicycle', label: 'Bike' },
+  { name: 'diamond', label: 'Luxury' },
+];
 
 export default function GoalsScreen() {
 
@@ -21,21 +35,19 @@ export default function GoalsScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [goalName, setGoalName] = useState('');
   const [goalTarget, setGoalTarget] = useState('');
-  const [goalEmoji, setGoalEmoji] = useState('🎯');
-
-  const EMOJI_OPTIONS = ['🎯', '🏠', '✈️', '🚗', '💻', '📱', '👟', '🎓', '💍', '🏖️'];
+  const [goalIcon, setGoalIcon] = useState('flag');
 
   useFocusEffect(
-  useCallback(() => {
-    const fetchData = async () => {
-      const g = await getGoals();
-      const w = await getWallets();
-      setGoals(g);
-      setSavingsBalance(w.savings);
-    };
-    fetchData();
-  }, [])
-);
+    useCallback(() => {
+      const fetchData = async () => {
+        const g = await getGoals();
+        const w = await getWallets();
+        setGoals(g);
+        setSavingsBalance(w.savings);
+      };
+      fetchData();
+    }, [])
+  );
 
   const handleAddGoal = async () => {
     if (!goalName.trim()) {
@@ -51,7 +63,7 @@ export default function GoalsScreen() {
       id: Date.now().toString(),
       name: goalName.trim(),
       target: parseFloat(goalTarget),
-      emoji: goalEmoji,
+      icon: goalIcon,
       createdAt: new Date().toLocaleDateString('en-PH', {
         month: 'short',
         day: 'numeric',
@@ -62,10 +74,9 @@ export default function GoalsScreen() {
     const updatedGoals = [...goals, newGoal];
     await saveGoals(updatedGoals);
     setGoals(updatedGoals);
-
     setGoalName('');
     setGoalTarget('');
-    setGoalEmoji('🎯');
+    setGoalIcon('flag');
     setModalVisible(false);
   };
 
@@ -88,7 +99,6 @@ export default function GoalsScreen() {
     );
   };
 
-  // Calculates progress as a capped percentage of savings vs goal target
   const getProgress = (target) => {
     if (target <= 0) return 0;
     return Math.min(savingsBalance / target, 1);
@@ -110,7 +120,9 @@ export default function GoalsScreen() {
       >
         {goals.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>🎯</Text>
+            <View style={styles.emptyIconContainer}>
+              <Ionicons name="flag" size={40} color={COLORS.goals} />
+            </View>
             <Text style={styles.emptyText}>No goals yet</Text>
             <Text style={styles.emptySubtext}>
               Tap the button below to create your first savings goal
@@ -124,11 +136,20 @@ export default function GoalsScreen() {
             return (
               <View key={goal.id} style={[
                 styles.goalCard,
-                isComplete && styles.goalCardComplete,
+                isComplete && { borderColor: COLORS.expense },
               ]}>
 
                 <View style={styles.goalTop}>
-                  <Text style={styles.goalEmoji}>{goal.emoji}</Text>
+                  <View style={[
+                    styles.goalIconContainer,
+                    { backgroundColor: isComplete ? COLORS.expense + '22' : COLORS.goals + '22' }
+                  ]}>
+                    <Ionicons
+                      name={goal.icon || 'flag'}
+                      size={22}
+                      color={isComplete ? COLORS.expense : COLORS.goals}
+                    />
+                  </View>
                   <View style={styles.goalInfo}>
                     <Text style={styles.goalName}>{goal.name}</Text>
                     <Text style={styles.goalDate}>Created {goal.createdAt}</Text>
@@ -137,11 +158,10 @@ export default function GoalsScreen() {
                     onPress={() => handleDeleteGoal(goal.id)}
                     style={styles.deleteBtn}
                   >
-                    <Text style={styles.deleteBtnText}>✕</Text>
+                    <Ionicons name="close" size={18} color={COLORS.subtext} />
                   </TouchableOpacity>
                 </View>
 
-                {/* Progress amounts */}
                 <View style={styles.goalAmounts}>
                   <Text style={styles.goalCurrent}>
                     {formatPeso(Math.min(savingsBalance, goal.target))}
@@ -151,13 +171,12 @@ export default function GoalsScreen() {
                   </Text>
                 </View>
 
-                {/* Progress bar */}
                 <View style={styles.progressTrack}>
                   <View style={[
                     styles.progressFill,
                     {
                       width: `${Math.round(progress * 100)}%`,
-                      backgroundColor: isComplete ? COLORS.expense : COLORS.savings,
+                      backgroundColor: isComplete ? COLORS.expense : COLORS.goals,
                     },
                   ]} />
                 </View>
@@ -165,12 +184,17 @@ export default function GoalsScreen() {
                 <View style={styles.goalFooter}>
                   <Text style={[
                     styles.goalPercent,
-                    { color: isComplete ? COLORS.expense : COLORS.savings },
+                    { color: isComplete ? COLORS.expense : COLORS.goals },
                   ]}>
                     {Math.round(progress * 100)}%
                   </Text>
                   {isComplete ? (
-                    <Text style={styles.completeTag}>✅ Goal Reached!</Text>
+                    <View style={styles.completeTag}>
+                      <Ionicons name="checkmark-circle" size={14} color={COLORS.expense} />
+                      <Text style={[styles.completeTagText, { color: COLORS.expense }]}>
+                        Goal Reached!
+                      </Text>
+                    </View>
                   ) : (
                     <Text style={styles.goalRemaining}>
                       {formatPeso(goal.target - savingsBalance)} remaining
@@ -184,15 +208,14 @@ export default function GoalsScreen() {
         )}
       </ScrollView>
 
-      {/* Add Goal Button */}
       <TouchableOpacity
         style={styles.addButton}
         onPress={() => setModalVisible(true)}
       >
-        <Text style={styles.addButtonText}>+ New Goal</Text>
+        <Ionicons name="add" size={20} color="#fff" />
+        <Text style={styles.addButtonText}>New Goal</Text>
       </TouchableOpacity>
 
-      {/* Add Goal Modal */}
       <Modal
         visible={modalVisible}
         transparent
@@ -227,18 +250,22 @@ export default function GoalsScreen() {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.emojiRow}
+              contentContainerStyle={styles.iconRow}
             >
-              {EMOJI_OPTIONS.map((emoji) => (
+              {GOAL_ICONS.map((icon) => (
                 <TouchableOpacity
-                  key={emoji}
+                  key={icon.name}
                   style={[
-                    styles.emojiBtn,
-                    goalEmoji === emoji && styles.emojiBtnSelected,
+                    styles.iconBtn,
+                    goalIcon === icon.name && styles.iconBtnSelected,
                   ]}
-                  onPress={() => setGoalEmoji(emoji)}
+                  onPress={() => setGoalIcon(icon.name)}
                 >
-                  <Text style={styles.emojiOption}>{emoji}</Text>
+                  <Ionicons
+                    name={icon.name}
+                    size={22}
+                    color={goalIcon === icon.name ? COLORS.goals : COLORS.subtext}
+                  />
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -299,16 +326,21 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     paddingVertical: 60,
+    gap: 10,
   },
-  emptyEmoji: {
-    fontSize: 40,
-    marginBottom: 12,
+  emptyIconContainer: {
+    width: 72,
+    height: 72,
+    borderRadius: 20,
+    backgroundColor: COLORS.goals + '22',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
   },
   emptyText: {
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.text,
-    marginBottom: 6,
   },
   emptySubtext: {
     fontSize: 13,
@@ -324,16 +356,17 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 14,
   },
-  goalCardComplete: {
-    borderColor: COLORS.expense,
-  },
   goalTop: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
   },
-  goalEmoji: {
-    fontSize: 28,
+  goalIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 12,
   },
   goalInfo: {
@@ -351,10 +384,6 @@ const styles = StyleSheet.create({
   },
   deleteBtn: {
     padding: 6,
-  },
-  deleteBtnText: {
-    fontSize: 14,
-    color: COLORS.subtext,
   },
   goalAmounts: {
     flexDirection: 'row',
@@ -392,8 +421,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   completeTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  completeTagText: {
     fontSize: 12,
-    color: COLORS.expense,
     fontWeight: '600',
   },
   goalRemaining: {
@@ -405,10 +438,13 @@ const styles = StyleSheet.create({
     bottom: 24,
     left: 24,
     right: 24,
-    backgroundColor: COLORS.savings,
+    backgroundColor: COLORS.goals,
     borderRadius: 14,
     padding: 16,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
   },
   addButtonText: {
     fontSize: 16,
@@ -450,11 +486,11 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginBottom: 20,
   },
-  emojiRow: {
+  iconRow: {
     gap: 10,
     paddingBottom: 20,
   },
-  emojiBtn: {
+  iconBtn: {
     width: 48,
     height: 48,
     borderRadius: 12,
@@ -464,12 +500,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emojiBtnSelected: {
-    borderColor: COLORS.savings,
-    backgroundColor: COLORS.savings + '22',
-  },
-  emojiOption: {
-    fontSize: 22,
+  iconBtnSelected: {
+    borderColor: COLORS.goals,
+    backgroundColor: COLORS.goals + '22',
   },
   modalActions: {
     flexDirection: 'row',
@@ -491,7 +524,7 @@ const styles = StyleSheet.create({
   },
   confirmBtn: {
     flex: 1,
-    backgroundColor: COLORS.savings,
+    backgroundColor: COLORS.goals,
     borderRadius: 14,
     padding: 14,
     alignItems: 'center',

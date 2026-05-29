@@ -15,7 +15,7 @@ const Tab = createBottomTabNavigator();
 export default function TabNavigator({ onReset }) {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
+      screenOptions={{
         headerShown: false,
         tabBarStyle: {
           backgroundColor: COLORS.card,
@@ -24,29 +24,62 @@ export default function TabNavigator({ onReset }) {
           paddingBottom: 10,
           paddingTop: 8,
         },
-        tabBarActiveTintColor: COLORS.savings,
         tabBarInactiveTintColor: COLORS.subtext,
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',
         },
-        tabBarIcon: ({ color }) => {
-          const icons = {
-            Home: 'home',
-            Transfer: 'swap-horizontal',
-            Goals: 'flag',
-            History: 'receipt',
-            Settings: 'settings-sharp',
-          };
-          return <Ionicons name={icons[route.name]} size={22} color={color} />;
-        },
-      })}
+      }}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Transfer" component={TransferScreen} />
-      <Tab.Screen name="Goals" component={GoalsScreen} />
-      <Tab.Screen name="History" component={HistoryScreen} />
-      <Tab.Screen name="Settings">
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{
+          tabBarActiveTintColor: COLORS.savings,
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="home" size={22} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Transfer"
+        component={TransferScreen}
+        options={{
+          tabBarActiveTintColor: COLORS.transfer,
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="swap-horizontal" size={22} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Goals"
+        component={GoalsScreen}
+        options={{
+          tabBarActiveTintColor: COLORS.goals,
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="flag" size={22} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="History"
+        component={HistoryScreen}
+        options={{
+          tabBarActiveTintColor: COLORS.expense,
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="receipt" size={22} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Settings"
+        options={{
+          tabBarActiveTintColor: COLORS.text,
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="settings-sharp" size={22} color={color} />
+          ),
+        }}
+      >
         {() => <SettingsScreen onReset={onReset} />}
       </Tab.Screen>
     </Tab.Navigator>

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { COLORS, formatPeso } from '../constants';
 import { getTransactions } from '../storage/storage';
@@ -36,10 +37,22 @@ export default function HistoryScreen() {
     return matchesType && matchesWallet;
   });
 
-  const getAmountColor = (type) => {
+  const getTxIconName = (type) => {
+    if (type === 'expense') return 'remove-circle';
+    if (type === 'income') return 'add-circle';
+    return 'swap-horizontal';
+  };
+
+  const getTxIconColor = (type) => {
     if (type === 'expense') return COLORS.danger;
     if (type === 'income') return COLORS.savings;
-    return COLORS.subtext;
+    return COLORS.warning;
+  };
+
+  const getAmountColor = (type) => {
+    if (type === 'expense') return COLORS.danger;
+    if (type === 'income') return COLORS.expense;
+    return COLORS.warning;
   };
 
   const getAmountPrefix = (type) => {
@@ -58,11 +71,7 @@ export default function HistoryScreen() {
         </Text>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterRow}
-      >
+      <View style={styles.filterSection}>
         {TYPE_FILTERS.map((filter) => (
           <TouchableOpacity
             key={filter}
@@ -80,13 +89,9 @@ export default function HistoryScreen() {
             </Text>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterRow}
-      >
+      <View style={styles.filterSection}>
         {WALLET_FILTERS.map((filter) => (
           <TouchableOpacity
             key={filter}
@@ -100,11 +105,11 @@ export default function HistoryScreen() {
               styles.filterPillText,
               walletFilter === filter && styles.filterPillTextActive,
             ]}>
-              {filter === 'Both' ? '👛 Both' : filter === 'Savings' ? '🐷 Savings' : '💳 Expense'}
+              {filter === 'Both' ? 'Both' : filter === 'Savings' ? 'Savings' : 'Expense'}
             </Text>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
 
       <ScrollView
         contentContainerStyle={styles.listContent}
@@ -112,7 +117,7 @@ export default function HistoryScreen() {
       >
         {filtered.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>📭</Text>
+            <Ionicons name="receipt-outline" size={40} color={COLORS.subtext} />
             <Text style={styles.emptyText}>No transactions found</Text>
             <Text style={styles.emptySubtext}>
               {typeFilter !== 'All' || walletFilter !== 'Both'
@@ -123,8 +128,15 @@ export default function HistoryScreen() {
         ) : (
           filtered.map((tx, index) => (
             <View key={tx.id || index} style={styles.txCard}>
-              <View style={styles.txLeft}>
-                <Text style={styles.txEmoji}>{tx.emoji || '💸'}</Text>
+              <View style={[
+                styles.txIconContainer,
+                { backgroundColor: getTxIconColor(tx.type) + '22' }
+              ]}>
+                <Ionicons
+                  name={getTxIconName(tx.type)}
+                  size={22}
+                  color={getTxIconColor(tx.type)}
+                />
               </View>
               <View style={styles.txMiddle}>
                 <Text style={styles.txLabel}>{tx.label}</Text>
@@ -132,7 +144,7 @@ export default function HistoryScreen() {
                   <Text style={styles.txCategory}>{tx.category}</Text>
                   <Text style={styles.txDot}>·</Text>
                   <Text style={styles.txWallet}>
-                    {tx.wallet === 'savings' ? '🐷' : '💳'} {tx.wallet}
+                    {tx.wallet === 'savings' ? 'Savings' : 'Expense'}
                   </Text>
                   <Text style={styles.txDot}>·</Text>
                   <Text style={styles.txDate}>{tx.date}</Text>
@@ -170,11 +182,11 @@ const styles = StyleSheet.create({
     color: COLORS.subtext,
     marginTop: 4,
   },
-  filterRow: {
+  filterSection: {
+    flexDirection: 'row',
     paddingHorizontal: 24,
     paddingBottom: 10,
     gap: 8,
-    flexDirection: 'row',
   },
   filterPill: {
     paddingHorizontal: 16,
@@ -204,16 +216,12 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     paddingVertical: 60,
-  },
-  emptyEmoji: {
-    fontSize: 40,
-    marginBottom: 12,
+    gap: 8,
   },
   emptyText: {
     fontSize: 16,
     fontWeight: '600',
     color: COLORS.text,
-    marginBottom: 6,
   },
   emptySubtext: {
     fontSize: 13,
@@ -230,11 +238,13 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 10,
   },
-  txLeft: {
+  txIconContainer: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 12,
-  },
-  txEmoji: {
-    fontSize: 26,
   },
   txMiddle: {
     flex: 1,
@@ -262,7 +272,6 @@ const styles = StyleSheet.create({
   txWallet: {
     fontSize: 11,
     color: COLORS.subtext,
-    textTransform: 'capitalize',
   },
   txDate: {
     fontSize: 11,

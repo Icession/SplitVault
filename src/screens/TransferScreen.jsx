@@ -10,6 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { COLORS, formatPeso } from '../constants';
 import { getWallets, saveWallets, addTransaction } from '../storage/storage';
@@ -17,7 +18,7 @@ import { getWallets, saveWallets, addTransaction } from '../storage/storage';
 export default function TransferScreen({ navigation }) {
 
   const [amount, setAmount] = useState('');
-  const [direction, setDirection] = useState('expenseToSavings');
+  const [direction, setDirection] = useState('savingsToExpense');
   const [wallets, setWallets] = useState({ savings: 0, expense: 0 });
 
   useEffect(() => {
@@ -28,7 +29,6 @@ export default function TransferScreen({ navigation }) {
     loadWallets();
   }, []);
 
-  // Derives source and destination based on selected direction
   const isExpenseToSavings = direction === 'expenseToSavings';
   const sourceWallet = isExpenseToSavings ? 'expense' : 'savings';
   const destinationWallet = isExpenseToSavings ? 'savings' : 'expense';
@@ -62,7 +62,6 @@ export default function TransferScreen({ navigation }) {
       amount: parsedAmount,
       label: `Transfer to ${destinationWallet.charAt(0).toUpperCase() + destinationWallet.slice(1)}`,
       category: 'Transfer',
-      emoji: '🔁',
       date: new Date().toLocaleDateString('en-PH', {
         month: 'short',
         day: 'numeric',
@@ -103,33 +102,47 @@ export default function TransferScreen({ navigation }) {
           <Text style={styles.subtitle}>Move money between your wallets</Text>
         </View>
 
-        {/* Wallet Balance Overview */}
         <View style={styles.walletsRow}>
-          <View style={[styles.walletCard, { borderColor: COLORS.expense }]}>
-            <Text style={styles.walletEmoji}>💳</Text>
-            <Text style={styles.walletLabel}>Expense</Text>
-            <Text style={[styles.walletAmount, { color: COLORS.expense }]}>
-              {formatPeso(wallets.expense)}
-            </Text>
-          </View>
-
-          <Text style={styles.arrowDivider}>⇄</Text>
-
           <View style={[styles.walletCard, { borderColor: COLORS.savings }]}>
-            <Text style={styles.walletEmoji}>🐷</Text>
+            <Ionicons name="wallet" size={24} color={COLORS.savings} style={styles.walletIcon} />
             <Text style={styles.walletLabel}>Savings</Text>
             <Text style={[styles.walletAmount, { color: COLORS.savings }]}>
               {formatPeso(wallets.savings)}
             </Text>
           </View>
+
+          <Ionicons name="swap-horizontal" size={24} color={COLORS.subtext} />
+
+          <View style={[styles.walletCard, { borderColor: COLORS.expense }]}>
+            <Ionicons name="card" size={24} color={COLORS.expense} style={styles.walletIcon} />
+            <Text style={styles.walletLabel}>Expense</Text>
+            <Text style={[styles.walletAmount, { color: COLORS.expense }]}>
+              {formatPeso(wallets.expense)}
+            </Text>
+          </View>
         </View>
 
-        {/* Direction Selector */}
         <Text style={styles.label}>Transfer Direction</Text>
         <View style={styles.directionRow}>
           {[
-            { key: 'expenseToSavings', label: '💳 → 🐷', sub: 'Expense to Savings' },
-            { key: 'savingsToExpense', label: '🐷 → 💳', sub: 'Savings to Expense' },
+            {
+              key: 'savingsToExpense',
+              from: 'Savings',
+              to: 'Expense',
+              fromIcon: 'wallet',
+              toIcon: 'card',
+              fromColor: COLORS.savings,
+              toColor: COLORS.expense,
+            },
+            {
+              key: 'expenseToSavings',
+              from: 'Expense',
+              to: 'Savings',
+              fromIcon: 'card',
+              toIcon: 'wallet',
+              fromColor: COLORS.expense,
+              toColor: COLORS.savings,
+            },
           ].map((option) => (
             <TouchableOpacity
               key={option.key}
@@ -139,13 +152,16 @@ export default function TransferScreen({ navigation }) {
               ]}
               onPress={() => setDirection(option.key)}
             >
-              <Text style={styles.directionEmoji}>{option.label}</Text>
-              <Text style={styles.directionSub}>{option.sub}</Text>
+              <View style={styles.directionInner}>
+                <Ionicons name={option.fromIcon} size={18} color={option.fromColor} />
+                <Ionicons name="arrow-forward" size={14} color={COLORS.subtext} />
+                <Ionicons name={option.toIcon} size={18} color={option.toColor} />
+              </View>
+              <Text style={styles.directionSub}>{option.from} to {option.to}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Source Balance Indicator */}
         <View style={styles.sourceInfo}>
           <Text style={styles.sourceInfoText}>
             Available in {sourceWallet} wallet:{' '}
@@ -165,23 +181,12 @@ export default function TransferScreen({ navigation }) {
           onChangeText={setAmount}
         />
 
-        {/* Live Preview */}
         {parseFloat(amount) > 0 && (
           <View style={styles.previewBox}>
             <Text style={styles.previewTitle}>After Transfer</Text>
             <View style={styles.previewRow}>
               <Text style={styles.previewItem}>
-                💳 Expense:{' '}
-                <Text style={{ color: COLORS.expense, fontWeight: '700' }}>
-                  {formatPeso(
-                    isExpenseToSavings
-                      ? wallets.expense - (parseFloat(amount) || 0)
-                      : wallets.expense + (parseFloat(amount) || 0)
-                  )}
-                </Text>
-              </Text>
-              <Text style={styles.previewItem}>
-                🐷 Savings:{' '}
+                Savings:{' '}
                 <Text style={{ color: COLORS.savings, fontWeight: '700' }}>
                   {formatPeso(
                     isExpenseToSavings
@@ -190,19 +195,26 @@ export default function TransferScreen({ navigation }) {
                   )}
                 </Text>
               </Text>
+              <Text style={styles.previewItem}>
+                Expense:{' '}
+                <Text style={{ color: COLORS.expense, fontWeight: '700' }}>
+                  {formatPeso(
+                    isExpenseToSavings
+                      ? wallets.expense - (parseFloat(amount) || 0)
+                      : wallets.expense + (parseFloat(amount) || 0)
+                  )}
+                </Text>
+              </Text>
             </View>
           </View>
         )}
 
         <TouchableOpacity
-          style={[
-            styles.button,
-            { opacity: amount ? 1 : 0.5 },
-          ]}
+          style={[styles.button, { opacity: amount ? 1 : 0.5 }]}
           onPress={handleTransfer}
           disabled={!amount}
         >
-          <Text style={styles.buttonText}>Confirm Transfer 🔁</Text>
+          <Text style={styles.buttonText}>Confirm Transfer</Text>
         </TouchableOpacity>
 
       </ScrollView>
@@ -247,9 +259,8 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
   },
-  walletEmoji: {
-    fontSize: 24,
-    marginBottom: 4,
+  walletIcon: {
+    marginBottom: 6,
   },
   walletLabel: {
     fontSize: 12,
@@ -259,10 +270,6 @@ const styles = StyleSheet.create({
   walletAmount: {
     fontSize: 15,
     fontWeight: '700',
-  },
-  arrowDivider: {
-    fontSize: 22,
-    color: COLORS.subtext,
   },
   label: {
     fontSize: 14,
@@ -283,14 +290,16 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     padding: 14,
     alignItems: 'center',
+    gap: 8,
   },
   directionBtnSelected: {
     borderColor: COLORS.savings,
     backgroundColor: COLORS.savings + '22',
   },
-  directionEmoji: {
-    fontSize: 18,
-    marginBottom: 4,
+  directionInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   directionSub: {
     fontSize: 11,

@@ -8,6 +8,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { COLORS, formatPeso } from '../constants';
 import { getWallets, getTransactions } from '../storage/storage';
@@ -49,6 +50,30 @@ export default function HomeScreen({ navigation }) {
 
   const warningLevel = getWarningLevel();
 
+  const getTxIconName = (type) => {
+    if (type === 'expense') return 'remove-circle';
+    if (type === 'income') return 'add-circle';
+    return 'swap-horizontal';
+  };
+
+  const getTxIconColor = (type) => {
+    if (type === 'expense') return COLORS.danger;
+    if (type === 'income') return COLORS.income;
+    return COLORS.transfer;
+  };
+
+  const getTxAmountColor = (type) => {
+    if (type === 'expense') return COLORS.danger;
+    if (type === 'income') return COLORS.income;
+    return COLORS.transfer;
+  };
+
+  const getTxPrefix = (type) => {
+    if (type === 'expense') return '-';
+    if (type === 'income') return '+';
+    return '';
+  };
+
   return (
     <ScrollView
       style={styles.container}
@@ -63,7 +88,7 @@ export default function HomeScreen({ navigation }) {
     >
 
       <View style={styles.header}>
-        <Text style={styles.greeting}>SplitVault 💰</Text>
+        <Text style={styles.greeting}>SplitVault</Text>
         <Text style={styles.subGreeting}>Your wallet overview</Text>
       </View>
 
@@ -72,17 +97,23 @@ export default function HomeScreen({ navigation }) {
           styles.warningBanner,
           { backgroundColor: warningLevel === 'danger' ? COLORS.danger : COLORS.warning }
         ]}>
+          <Ionicons
+            name={warningLevel === 'danger' ? 'alert-circle' : 'warning'}
+            size={16}
+            color="#fff"
+            style={{ marginRight: 6 }}
+          />
           <Text style={styles.warningText}>
             {warningLevel === 'danger'
-              ? '🚨 Expense wallet is empty — transfer funds to start spending'
-              : '⚠️ Expense wallet is running low'}
+              ? 'Expense wallet is empty — transfer funds to start spending'
+              : 'Expense wallet is running low'}
           </Text>
         </View>
       )}
 
       <View style={styles.walletRow}>
         <View style={[styles.walletCard, { borderColor: COLORS.savings }]}>
-          <Text style={styles.walletEmoji}>🐷</Text>
+          <Ionicons name="wallet" size={28} color={COLORS.savings} style={styles.walletIcon} />
           <Text style={styles.walletLabel}>Savings</Text>
           <Text style={[styles.walletAmount, { color: COLORS.savings }]}>
             {formatPeso(wallets.savings)}
@@ -96,7 +127,18 @@ export default function HomeScreen({ navigation }) {
             ? COLORS.warning
             : COLORS.expense
         }]}>
-          <Text style={styles.walletEmoji}>💳</Text>
+          <Ionicons
+            name="card"
+            size={28}
+            color={
+              warningLevel === 'danger'
+                ? COLORS.danger
+                : warningLevel === 'warning'
+                ? COLORS.warning
+                : COLORS.expense
+            }
+            style={styles.walletIcon}
+          />
           <Text style={styles.walletLabel}>Expense</Text>
           <Text style={[styles.walletAmount, {
             color: warningLevel === 'danger'
@@ -115,11 +157,10 @@ export default function HomeScreen({ navigation }) {
         <Text style={styles.totalAmount}>{formatPeso(total)}</Text>
       </View>
 
-      {/* Savings vs Expense Split Bar */}
       <View style={styles.gaugeContainer}>
         <View style={styles.gaugeLabelRow}>
-          <Text style={styles.gaugeLabel}>🐷 Savings</Text>
-          <Text style={styles.gaugeLabel}>💳 Expense</Text>
+          <Text style={styles.gaugeLabel}>Savings</Text>
+          <Text style={styles.gaugeLabel}>Expense</Text>
         </View>
         <View style={styles.gaugeTrack}>
           <View style={[
@@ -152,16 +193,16 @@ export default function HomeScreen({ navigation }) {
           style={[styles.actionBtn, { borderColor: COLORS.danger }]}
           onPress={() => navigation.navigate('AddExpense')}
         >
-          <Text style={styles.actionEmoji}>➖</Text>
+          <Ionicons name="remove-circle" size={24} color={COLORS.danger} />
           <Text style={[styles.actionLabel, { color: COLORS.danger }]}>Expense</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.actionBtn, { borderColor: COLORS.savings }]}
+          style={[styles.actionBtn, { borderColor: COLORS.income }]}
           onPress={() => navigation.navigate('AddIncome')}
         >
-          <Text style={styles.actionEmoji}>➕</Text>
-          <Text style={[styles.actionLabel, { color: COLORS.savings }]}>Income</Text>
+          <Ionicons name="add-circle" size={24} color={COLORS.income} />
+          <Text style={[styles.actionLabel, { color: COLORS.income }]}>Income</Text>
         </TouchableOpacity>
       </View>
 
@@ -175,22 +216,28 @@ export default function HomeScreen({ navigation }) {
 
         {transactions.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>📭</Text>
+            <Ionicons name="receipt-outline" size={40} color={COLORS.subtext} />
             <Text style={styles.emptyText}>No transactions yet</Text>
           </View>
         ) : (
           transactions.map((tx, index) => (
             <View key={tx.id || index} style={styles.txRow}>
-              <Text style={styles.txEmoji}>{tx.emoji || '💸'}</Text>
+              <View style={[
+                styles.txIconContainer,
+                { backgroundColor: getTxIconColor(tx.type) + '22' }
+              ]}>
+                <Ionicons
+                  name={getTxIconName(tx.type)}
+                  size={22}
+                  color={getTxIconColor(tx.type)}
+                />
+              </View>
               <View style={styles.txInfo}>
                 <Text style={styles.txLabel}>{tx.label}</Text>
                 <Text style={styles.txDate}>{tx.date}</Text>
               </View>
-              <Text style={[
-                styles.txAmount,
-                { color: tx.type === 'expense' ? COLORS.danger : COLORS.savings }
-              ]}>
-                {tx.type === 'expense' ? '-' : '+'}{formatPeso(tx.amount)}
+              <Text style={[styles.txAmount, { color: getTxAmountColor(tx.type) }]}>
+                {getTxPrefix(tx.type)}{formatPeso(tx.amount)}
               </Text>
             </View>
           ))
@@ -228,12 +275,14 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 12,
     marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   warningText: {
     fontSize: 13,
     fontWeight: '600',
     color: '#fff',
-    textAlign: 'center',
+    flex: 1,
   },
   walletRow: {
     flexDirection: 'row',
@@ -248,9 +297,8 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
   },
-  walletEmoji: {
-    fontSize: 28,
-    marginBottom: 6,
+  walletIcon: {
+    marginBottom: 8,
   },
   walletLabel: {
     fontSize: 13,
@@ -318,10 +366,7 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: 'center',
     borderWidth: 1.5,
-  },
-  actionEmoji: {
-    fontSize: 22,
-    marginBottom: 4,
+    gap: 6,
   },
   actionLabel: {
     fontSize: 12,
@@ -349,10 +394,7 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     paddingVertical: 32,
-  },
-  emptyEmoji: {
-    fontSize: 36,
-    marginBottom: 8,
+    gap: 8,
   },
   emptyText: {
     fontSize: 14,
@@ -368,8 +410,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  txEmoji: {
-    fontSize: 22,
+  txIconContainer: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 12,
   },
   txInfo: {
