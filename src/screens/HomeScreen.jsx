@@ -35,7 +35,11 @@ export default function HomeScreen({ navigation }) {
     setTransactions(t.slice(0, 5));
   }, []);
 
-  useFocusEffect(fetchData);
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [fetchData])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);

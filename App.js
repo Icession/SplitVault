@@ -17,11 +17,13 @@ import { getIsSetup } from './src/storage/storage';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import TabNavigator from './src/navigation/TabNavigator';
 import SetupScreen from './src/screens/SetupScreen';
+import AuthFlow from './src/navigation/AuthFlow';
 
 function AppContent() {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isSetup, setIsSetup] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -37,6 +39,15 @@ function AppContent() {
   const navTheme = isDark
     ? { ...DarkTheme, colors: { ...DarkTheme.colors, background: colors.background } }
     : { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: colors.background } };
+
+  if (!isLoggedIn) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <AuthFlow onAuthenticated={() => setIsLoggedIn(true)} />
+      </SafeAreaView>
+    );
+  }
 
   if (loading) {
     return (
@@ -54,7 +65,12 @@ function AppContent() {
       <NavigationContainer theme={navTheme}>
         <StatusBar style={isDark ? 'light' : 'dark'} />
         {isSetup ? (
-          <TabNavigator onReset={() => setIsSetup(false)} />
+          <TabNavigator
+            onReset={() => {
+              setIsSetup(false);
+              setIsLoggedIn(false);
+            }}
+          />
         ) : (
           <SetupScreen onComplete={() => setIsSetup(true)} />
         )}
