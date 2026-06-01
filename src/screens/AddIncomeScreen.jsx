@@ -56,6 +56,7 @@ export default function AddIncomeScreen({ navigation, onClose }) {
 
     const transaction = {
       id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
       type: 'income',
       wallet: 'savings',
       amount: parsedAmount,
@@ -71,20 +72,13 @@ export default function AddIncomeScreen({ navigation, onClose }) {
     await saveWallets(updatedWallets);
     await addTransaction(transaction);
 
+    setAmount('');
+    setLabel('');
     Alert.alert(
       'Income Added',
-      `${formatPeso(parsedAmount)} added to your Savings wallet.`,
-      [
-        {
-          text: 'OK',
-          onPress: () => {
-            setAmount('');
-            setLabel('');
-            handleClose();
-          },
-        },
-      ]
+      `${formatPeso(parsedAmount)} added to your Savings wallet.`
     );
+    handleClose();
   };
 
   return (

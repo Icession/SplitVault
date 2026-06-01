@@ -1,4 +1,5 @@
 import { lightColors } from '../theme/Themes';
+
 export const COLORS = lightColors;
 
 export const CATEGORIES = [
@@ -25,4 +26,5 @@ export const STORAGE_KEYS = {
   goals: 'sv_goals',
   isSetup: 'sv_is_setup',
   theme: 'sv_theme',
+  profile: 'sv_profile',
 };

@@ -69,6 +69,7 @@ export default function AddExpenseScreen({ navigation, onClose }) {
 
     const transaction = {
       id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
       type: 'expense',
       wallet: selectedWallet,
       amount: parsedAmount,
@@ -84,23 +85,19 @@ export default function AddExpenseScreen({ navigation, onClose }) {
     await saveWallets(updatedWallets);
     await addTransaction(transaction);
 
+    setAmount('');
+    setLabel('');
+    setSelectedCategory(null);
+    setSelectedWallet('expense');
     Alert.alert(
       'Expense Recorded',
-      `${formatPeso(parsedAmount)} deducted from ${selectedWallet} wallet.`,
-      [
-        {
-          text: 'OK',
-          onPress: () => {
-            setAmount('');
-            setLabel('');
-            setSelectedCategory(null);
-            setSelectedWallet('expense');
-            handleClose();
-          },
-        },
-      ]
+      `${formatPeso(parsedAmount)} deducted from ${selectedWallet} wallet.`
     );
+    handleClose();
   };
+
+  const accent = selectedWallet === 'savings' ? colors.savings : colors.expense;
+  const actionLabel = selectedWallet === 'savings' ? 'Record Savings' : 'Record Expense';
 
   return (
     <KeyboardAvoidingView
@@ -182,13 +179,16 @@ export default function AddExpenseScreen({ navigation, onClose }) {
               key={cat.label}
               style={[
                 styles.categoryBtn,
-                selectedCategory?.label === cat.label && styles.categoryBtnSelected,
+                selectedCategory?.label === cat.label && {
+                  borderColor: accent,
+                  backgroundColor: accent + '22',
+                },
               ]}
               onPress={() => setSelectedCategory(cat)}
             >
               <Text style={[
                 styles.categoryLabel,
-                selectedCategory?.label === cat.label && { color: colors.danger },
+                selectedCategory?.label === cat.label && { color: accent },
               ]}>
                 {cat.label}
               </Text>
@@ -199,12 +199,12 @@ export default function AddExpenseScreen({ navigation, onClose }) {
         <TouchableOpacity
           style={[
             styles.button,
-            { opacity: amount && selectedCategory && label ? 1 : 0.5 },
+            { backgroundColor: accent, opacity: amount && selectedCategory && label ? 1 : 0.5 },
           ]}
           onPress={handleSubmit}
           disabled={!amount || !selectedCategory || !label}
         >
-          <Text style={styles.buttonText}>Record Expense</Text>
+          <Text style={styles.buttonText}>{actionLabel}</Text>
         </TouchableOpacity>
 
       </ScrollView>

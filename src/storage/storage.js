@@ -69,6 +69,25 @@ export const saveGoals = async (goals) => {
   }
 };
 
+// PROFILE
+export const getProfile = async () => {
+  try {
+    const data = await AsyncStorage.getItem(STORAGE_KEYS.profile);
+    return data ? JSON.parse(data) : { fullName: '', email: '', currency: 'PHP' };
+  } catch (e) {
+    console.error('getProfile error:', e);
+    return { fullName: '', email: '', currency: 'PHP' };
+  }
+};
+
+export const saveProfile = async (profile) => {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(profile));
+  } catch (e) {
+    console.error('saveProfile error:', e);
+  }
+};
+
 // SETUP FLAG
 export const getIsSetup = async () => {
   try {

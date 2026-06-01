@@ -13,7 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 
 import { formatPeso, STORAGE_KEYS } from '../constants';
-import { getWallets, saveTransactions, saveGoals } from '../storage/storage';
+import { getWallets, saveTransactions, saveGoals, getProfile, saveProfile } from '../storage/storage';
 import { useTheme } from '../theme/ThemeContext';
 
 const CURRENCIES = [
@@ -40,17 +40,22 @@ export default function SettingsScreen({ onReset }) {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   useEffect(() => {
-    const fetchWallets = async () => {
+    const fetchData = async () => {
       const w = await getWallets();
       setWallets(w);
+      const p = await getProfile();
+      setFullName(p.fullName || '');
+      setEmail(p.email || '');
+      setCurrency(p.currency || 'PHP');
     };
-    fetchWallets();
+    fetchData();
   }, []);
 
   const selectedCurrency =
     CURRENCIES.find((c) => c.code === currency) || CURRENCIES[0];
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
+    await saveProfile({ fullName: fullName.trim(), email: email.trim(), currency });
     Alert.alert('Profile Saved', 'Your profile has been updated.');
   };
 
@@ -83,6 +88,7 @@ export default function SettingsScreen({ onReset }) {
               STORAGE_KEYS.transactions,
               STORAGE_KEYS.goals,
               STORAGE_KEYS.isSetup,
+              STORAGE_KEYS.profile,
             ]);
             onReset();
           },

@@ -12,7 +12,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { formatPeso } from '../constants';
-import { getWallets, getTransactions } from '../storage/storage';
+import { getWallets, getTransactions, getProfile } from '../storage/storage';
 import { useTheme } from '../theme/ThemeContext';
 import AddExpenseScreen from './AddExpenseScreen';
 import AddIncomeScreen from './AddIncomeScreen';
@@ -27,12 +27,15 @@ export default function HomeScreen({ navigation }) {
   const [showExpense, setShowExpense] = useState(false);
   const [showIncome, setShowIncome] = useState(false);
   const [showActions, setShowActions] = useState(false);
+  const [profileName, setProfileName] = useState('');
 
   const fetchData = useCallback(async () => {
     const w = await getWallets();
     const t = await getTransactions();
+    const p = await getProfile();
     setWallets(w);
-    setTransactions(t.slice(0, 5));
+    setTransactions(t);
+    setProfileName(p.fullName ? p.fullName.trim().split(' ')[0] : '');
   }, []);
 
   useFocusEffect(
@@ -56,6 +59,13 @@ export default function HomeScreen({ navigation }) {
   const totalExpense = transactions
     .filter(tx => tx.type === 'expense')
     .reduce((sum, tx) => sum + tx.amount, 0);
+
+  const recent = transactions.slice(0, 5);
+
+  const hour = new Date().getHours();
+  const timeGreeting =
+    hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const greeting = profileName ? `${timeGreeting}, ${profileName}` : timeGreeting;
 
   const getTxIconName = (type) => {
     if (type === 'expense') return 'remove-circle';
@@ -90,156 +100,176 @@ export default function HomeScreen({ navigation }) {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
       >
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Ionicons name="lock-closed" size={18} color={colors.primary} />
-            <Text style={styles.headerTitle}>SplitVault</Text>
-          </View>
-          <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
-            <Ionicons name="settings-outline" size={22} color={colors.text} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.balanceCard}>
-          <View style={styles.balanceCardInner}>
-            <Ionicons name="card-outline" size={18} color="#fff" style={{ marginBottom: 8 }} />
-            <Text style={styles.balanceTitleText}>Total Balance</Text>
-            <Text style={styles.balanceAmount}>{formatPeso(total)}</Text>
-            <View style={styles.walletsPill}>
-              <Ionicons name="stats-chart" size={12} color="#fff" />
-              <Text style={styles.walletsPillText}>2 wallets</Text>
+        <View style={styles.inner}>
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <View style={styles.brandRow}>
+                <Ionicons name="lock-closed" size={18} color={colors.primary} />
+                <Text style={styles.headerTitle}>SplitVault</Text>
+              </View>
+              <Text style={styles.greeting}>{greeting}</Text>
             </View>
           </View>
-        </View>
 
-        <View style={styles.summaryRow}>
-          <View style={styles.summaryCard}>
-            <View style={[styles.summaryIconBox, { backgroundColor: colors.income + '15' }]}>
-              <Ionicons name="trending-up" size={18} color={colors.income} />
+          {/* Total Balance */}
+          <View style={styles.balanceCard}>
+            <View style={styles.balanceCardInner}>
+              <Ionicons name="card-outline" size={18} color="#fff" style={{ marginBottom: 8 }} />
+              <Text style={styles.balanceTitleText}>Total Balance</Text>
+              <Text style={styles.balanceAmount}>{formatPeso(total)}</Text>
             </View>
-            <Text style={styles.summaryLabel}>Total Income</Text>
-            <Text style={[styles.summaryAmount, { color: colors.income }]}>
-              {formatPeso(totalIncome)}
-            </Text>
           </View>
-          <View style={styles.summaryCard}>
-            <View style={[styles.summaryIconBox, { backgroundColor: colors.danger + '15' }]}>
-              <Ionicons name="trending-down" size={18} color={colors.danger} />
-            </View>
-            <Text style={styles.summaryLabel}>Total Expenses</Text>
-            <Text style={[styles.summaryAmount, { color: colors.danger }]}>
-              {formatPeso(totalExpense)}
-            </Text>
-          </View>
-        </View>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionLabel}>RECENT TRANSACTIONS</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('History')}>
-              <Text style={styles.viewAll}>View all →</Text>
+          {/* Accounts (Savings / Expense) */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionLabel}>ACCOUNTS</Text>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.accountCard, { backgroundColor: colors.savingsCardBg }]}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('History')}
+            >
+              <View style={[styles.accountIconBox, { backgroundColor: colors.income + '25' }]}>
+                <Ionicons name="wallet" size={20} color={colors.income} />
+              </View>
+              <View style={styles.accountInfo}>
+                <Text style={styles.accountType}>Savings</Text>
+                <Text style={styles.accountName}>Savings Wallet</Text>
+              </View>
+              <Text style={[styles.accountAmount, { color: colors.income }]}>
+                {formatPeso(wallets.savings)}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.accountCard, { backgroundColor: colors.expenseCardBg }]}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('History')}
+            >
+              <View style={[styles.accountIconBox, { backgroundColor: colors.danger + '25' }]}>
+                <Ionicons name="card" size={20} color={colors.danger} />
+              </View>
+              <View style={styles.accountInfo}>
+                <Text style={styles.accountType}>Expense</Text>
+                <Text style={styles.accountName}>Expense Wallet</Text>
+              </View>
+              <Text style={[styles.accountAmount, { color: colors.danger }]}>
+                {formatPeso(wallets.expense)}
+              </Text>
             </TouchableOpacity>
           </View>
 
-          {transactions.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Ionicons name="receipt-outline" size={36} color={colors.subtext} />
-              <Text style={styles.emptyText}>No transactions yet</Text>
+          {/* Breakdown */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionLabel}>BREAKDOWN BY WALLET</Text>
             </View>
-          ) : (
-            transactions.map((tx, index) => (
-              <View key={tx.id || index} style={styles.txRow}>
+            <View style={styles.breakdownCard}>
+              <View style={styles.breakdownRow}>
+                <View style={styles.breakdownItem}>
+                  <View style={[styles.breakdownDot, { backgroundColor: colors.income }]} />
+                  <View>
+                    <Text style={styles.breakdownLabel}>
+                      Savings · {total > 0 ? Math.round((wallets.savings / total) * 100) : 0}%
+                    </Text>
+                    <Text style={styles.breakdownAmount}>{formatPeso(wallets.savings)}</Text>
+                  </View>
+                </View>
+                <View style={styles.breakdownItem}>
+                  <View style={[styles.breakdownDot, { backgroundColor: colors.danger }]} />
+                  <View>
+                    <Text style={styles.breakdownLabel}>
+                      Expense · {total > 0 ? Math.round((wallets.expense / total) * 100) : 0}%
+                    </Text>
+                    <Text style={styles.breakdownAmount}>{formatPeso(wallets.expense)}</Text>
+                  </View>
+                </View>
+              </View>
+              <View style={styles.gaugeTrack}>
                 <View style={[
-                  styles.txIconContainer,
-                  { backgroundColor: getTxIconColor(tx.type) + '15' }
-                ]}>
-                  <Ionicons name={getTxIconName(tx.type)} size={20} color={getTxIconColor(tx.type)} />
-                </View>
-                <View style={styles.txInfo}>
-                  <Text style={styles.txLabel}>{tx.label}</Text>
-                  <Text style={styles.txMeta}>{tx.category} · {tx.date}</Text>
-                </View>
-                <Text style={[styles.txAmount, { color: getTxAmountColor(tx.type) }]}>
-                  {getTxPrefix(tx.type)}{formatPeso(tx.amount)}
-                </Text>
-              </View>
-            ))
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionLabel}>ACCOUNTS</Text>
-          </View>
-
-          <View style={[styles.accountCard, { backgroundColor: colors.savingsCardBg }]}>
-            <View style={[styles.accountIconBox, { backgroundColor: colors.income + '25' }]}>
-              <Ionicons name="wallet" size={20} color={colors.income} />
-            </View>
-            <View style={styles.accountInfo}>
-              <Text style={styles.accountType}>Savings</Text>
-              <Text style={styles.accountName}>Savings Wallet</Text>
-            </View>
-            <Text style={[styles.accountAmount, { color: colors.income }]}>
-              {formatPeso(wallets.savings)}
-            </Text>
-          </View>
-
-          <View style={[styles.accountCard, { backgroundColor: colors.expenseCardBg }]}>
-            <View style={[styles.accountIconBox, { backgroundColor: colors.danger + '25' }]}>
-              <Ionicons name="card" size={20} color={colors.danger} />
-            </View>
-            <View style={styles.accountInfo}>
-              <Text style={styles.accountType}>Expense</Text>
-              <Text style={styles.accountName}>Expense Wallet</Text>
-            </View>
-            <Text style={[styles.accountAmount, { color: colors.danger }]}>
-              {formatPeso(wallets.expense)}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionLabel}>BREAKDOWN BY WALLET</Text>
-          </View>
-          <View style={styles.breakdownCard}>
-            <View style={styles.breakdownRow}>
-              <View style={styles.breakdownItem}>
-                <View style={[styles.breakdownDot, { backgroundColor: colors.income }]} />
-                <Text style={styles.breakdownLabel}>Savings</Text>
-                <Text style={styles.breakdownPercent}>
-                  {total > 0 ? Math.round((wallets.savings / total) * 100) : 0}%
-                </Text>
-              </View>
-              <View style={styles.breakdownItem}>
-                <View style={[styles.breakdownDot, { backgroundColor: colors.danger }]} />
-                <Text style={styles.breakdownLabel}>Expense</Text>
-                <Text style={styles.breakdownPercent}>
-                  {total > 0 ? Math.round((wallets.expense / total) * 100) : 0}%
-                </Text>
+                  styles.gaugeFill,
+                  {
+                    width: total > 0 ? `${Math.round((wallets.savings / total) * 100)}%` : '0%',
+                    backgroundColor: colors.income,
+                  }
+                ]} />
+                <View style={[
+                  styles.gaugeFill,
+                  {
+                    width: total > 0 ? `${Math.round((wallets.expense / total) * 100)}%` : '0%',
+                    backgroundColor: colors.danger,
+                  }
+                ]} />
               </View>
             </View>
-            <View style={styles.gaugeTrack}>
-              <View style={[
-                styles.gaugeFill,
-                {
-                  width: total > 0 ? `${Math.round((wallets.savings / total) * 100)}%` : '0%',
-                  backgroundColor: colors.income,
-                }
-              ]} />
-              <View style={[
-                styles.gaugeFill,
-                {
-                  width: total > 0 ? `${Math.round((wallets.expense / total) * 100)}%` : '0%',
-                  backgroundColor: colors.danger,
-                }
-              ]} />
+          </View>
+
+          {/* Income / Expense overview */}
+          <View style={styles.summaryRow}>
+            <View style={styles.summaryCard}>
+              <View style={[styles.summaryIconBox, { backgroundColor: colors.income + '15' }]}>
+                <Ionicons name="trending-up" size={18} color={colors.income} />
+              </View>
+              <Text style={styles.summaryLabel}>Total Income</Text>
+              <Text style={[styles.summaryAmount, { color: colors.income }]}>
+                {formatPeso(totalIncome)}
+              </Text>
+            </View>
+            <View style={styles.summaryCard}>
+              <View style={[styles.summaryIconBox, { backgroundColor: colors.danger + '15' }]}>
+                <Ionicons name="trending-down" size={18} color={colors.danger} />
+              </View>
+              <Text style={styles.summaryLabel}>Total Expenses</Text>
+              <Text style={[styles.summaryAmount, { color: colors.danger }]}>
+                {formatPeso(totalExpense)}
+              </Text>
             </View>
           </View>
-        </View>
 
-        <View style={{ height: 100 }} />
+          {/* Recent Transactions */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionLabel}>RECENT TRANSACTIONS</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('History')}>
+                <Text style={styles.viewAll}>View all →</Text>
+              </TouchableOpacity>
+            </View>
+
+            {recent.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="receipt-outline" size={36} color={colors.subtext} />
+                <Text style={styles.emptyText}>No transactions yet</Text>
+              </View>
+            ) : (
+              recent.map((tx, index) => (
+                <TouchableOpacity
+                  key={tx.id || index}
+                  style={styles.txRow}
+                  activeOpacity={0.7}
+                  onPress={() => navigation.navigate('History')}
+                >
+                  <View style={[
+                    styles.txIconContainer,
+                    { backgroundColor: getTxIconColor(tx.type) + '15' }
+                  ]}>
+                    <Ionicons name={getTxIconName(tx.type)} size={20} color={getTxIconColor(tx.type)} />
+                  </View>
+                  <View style={styles.txInfo}>
+                    <Text style={styles.txLabel}>{tx.label}</Text>
+                    <Text style={styles.txMeta}>{tx.category} · {tx.date}</Text>
+                  </View>
+                  <Text style={[styles.txAmount, { color: getTxAmountColor(tx.type) }]}>
+                    {getTxPrefix(tx.type)}{formatPeso(tx.amount)}
+                  </Text>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
+
+          <View style={{ height: 140 }} />
+        </View>
       </ScrollView>
 
       {showActions && (
@@ -302,6 +332,11 @@ const createStyles = (COLORS) => StyleSheet.create({
     padding: 20,
     paddingTop: 16,
   },
+  inner: {
+    width: '100%',
+    maxWidth: 480,
+    alignSelf: 'center',
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -309,6 +344,9 @@ const createStyles = (COLORS) => StyleSheet.create({
     marginBottom: 20,
   },
   headerLeft: {
+    alignItems: 'flex-start',
+  },
+  brandRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -318,10 +356,15 @@ const createStyles = (COLORS) => StyleSheet.create({
     fontWeight: '700',
     color: COLORS.text,
   },
+  greeting: {
+    fontSize: 13,
+    color: COLORS.subtext,
+    marginTop: 2,
+  },
   balanceCard: {
     borderRadius: 20,
     overflow: 'hidden',
-    marginBottom: 16,
+    marginBottom: 20,
     backgroundColor: COLORS.primary,
   },
   balanceCardInner: {
@@ -337,21 +380,6 @@ const createStyles = (COLORS) => StyleSheet.create({
     fontSize: 36,
     fontWeight: '700',
     color: '#fff',
-    marginBottom: 12,
-  },
-  walletsPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
-  walletsPillText: {
-    fontSize: 12,
-    color: '#fff',
-    fontWeight: '600',
   },
   summaryRow: {
     flexDirection: 'row',
@@ -495,7 +523,7 @@ const createStyles = (COLORS) => StyleSheet.create({
   breakdownItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   breakdownDot: {
     width: 10,
@@ -503,13 +531,14 @@ const createStyles = (COLORS) => StyleSheet.create({
     borderRadius: 5,
   },
   breakdownLabel: {
-    fontSize: 13,
+    fontSize: 12,
     color: COLORS.subtext,
   },
-  breakdownPercent: {
-    fontSize: 13,
+  breakdownAmount: {
+    fontSize: 14,
     fontWeight: '700',
     color: COLORS.text,
+    marginTop: 2,
   },
   gaugeTrack: {
     height: 8,
