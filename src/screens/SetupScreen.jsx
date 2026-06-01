@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,10 +11,13 @@ import {
   ScrollView,
 } from 'react-native';
 
-import { COLORS, formatPeso } from '../constants';
+import { formatPeso } from '../constants';
 import { saveWallets, setIsSetup } from '../storage/storage';
+import { useTheme } from '../theme/ThemeContext';
 
 export default function SetupScreen({ onComplete }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [totalAmount, setTotalAmount] = useState('');
 
@@ -57,7 +60,7 @@ export default function SetupScreen({ onComplete }) {
         <TextInput
           style={styles.input}
           placeholder="e.g. 10000"
-          placeholderTextColor={COLORS.subtext}
+          placeholderTextColor={colors.subtext}
           keyboardType="numeric"
           value={totalAmount}
           onChangeText={setTotalAmount}
@@ -67,17 +70,17 @@ export default function SetupScreen({ onComplete }) {
           <View style={styles.previewContainer}>
             <Text style={styles.previewTitle}>Your Starting Wallets</Text>
             <View style={styles.previewRow}>
-              <View style={[styles.previewCard, { borderColor: COLORS.savings }]}>
+              <View style={[styles.previewCard, { borderColor: colors.savings }]}>
                 <Text style={styles.previewEmoji}>🐷</Text>
                 <Text style={styles.previewLabel}>Savings</Text>
-                <Text style={[styles.previewAmount, { color: COLORS.savings }]}>
+                <Text style={[styles.previewAmount, { color: colors.savings }]}>
                   {formatPeso(parsedAmount)}
                 </Text>
               </View>
-              <View style={[styles.previewCard, { borderColor: COLORS.expense }]}>
+              <View style={[styles.previewCard, { borderColor: colors.expense }]}>
                 <Text style={styles.previewEmoji}>💳</Text>
                 <Text style={styles.previewLabel}>Expense</Text>
-                <Text style={[styles.previewAmount, { color: COLORS.expense }]}>
+                <Text style={[styles.previewAmount, { color: colors.expense }]}>
                   {formatPeso(0)}
                 </Text>
               </View>
@@ -101,7 +104,7 @@ export default function SetupScreen({ onComplete }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,

@@ -1,25 +1,28 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TextInput,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { COLORS, formatPeso } from '../constants';
+import { formatPeso } from '../constants';
 import { getTransactions } from '../storage/storage';
+import { useTheme } from '../theme/ThemeContext';
 
 const TYPE_FILTERS = ['All', 'Expense', 'Income', 'Transfer'];
-const WALLET_FILTERS = ['Both', 'Savings', 'Expense'];
 
-export default function HistoryScreen() {
+export default function HistoryScreen({ navigation }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [transactions, setTransactions] = useState([]);
   const [typeFilter, setTypeFilter] = useState('All');
-  const [walletFilter, setWalletFilter] = useState('Both');
+  const [search, setSearch] = useState('');
 
   useFocusEffect(
     useCallback(() => {
@@ -33,8 +36,8 @@ export default function HistoryScreen() {
 
   const filtered = transactions.filter((tx) => {
     const matchesType = typeFilter === 'All' || tx.type.toLowerCase() === typeFilter.toLowerCase();
-    const matchesWallet = walletFilter === 'Both' || tx.wallet.toLowerCase() === walletFilter.toLowerCase();
-    return matchesType && matchesWallet;
+    const matchesSearch = tx.label.toLowerCase().includes(search.toLowerCase());
+    return matchesType && matchesSearch;
   });
 
   const getTxIconName = (type) => {
@@ -44,15 +47,15 @@ export default function HistoryScreen() {
   };
 
   const getTxIconColor = (type) => {
-    if (type === 'expense') return COLORS.danger;
-    if (type === 'income') return COLORS.savings;
-    return COLORS.warning;
+    if (type === 'expense') return colors.danger;
+    if (type === 'income') return colors.income;
+    return colors.transfer;
   };
 
   const getAmountColor = (type) => {
-    if (type === 'expense') return COLORS.danger;
-    if (type === 'income') return COLORS.expense;
-    return COLORS.warning;
+    if (type === 'expense') return colors.danger;
+    if (type === 'income') return colors.income;
+    return colors.transfer;
   };
 
   const getAmountPrefix = (type) => {
@@ -65,10 +68,27 @@ export default function HistoryScreen() {
     <View style={styles.container}>
 
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.navigate('Home')} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
+        </TouchableOpacity>
         <Text style={styles.title}>Transaction History</Text>
-        <Text style={styles.subtitle}>
-          {filtered.length} transaction{filtered.length !== 1 ? 's' : ''}
-        </Text>
+      </View>
+
+      <View style={styles.searchRow}>
+        <View style={styles.searchBox}>
+          <Ionicons name="search-outline" size={16} color={colors.subtext} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search transactions..."
+            placeholderTextColor={colors.subtext}
+            value={search}
+            onChangeText={setSearch}
+          />
+        </View>
+        <View style={styles.filterDropdown}>
+          <Text style={styles.filterDropdownText}>{typeFilter}</Text>
+          <Ionicons name="chevron-down" size={14} color={colors.subtext} />
+        </View>
       </View>
 
       <View style={styles.filterSection}>
@@ -91,25 +111,9 @@ export default function HistoryScreen() {
         ))}
       </View>
 
-      <View style={styles.filterSection}>
-        {WALLET_FILTERS.map((filter) => (
-          <TouchableOpacity
-            key={filter}
-            style={[
-              styles.filterPill,
-              walletFilter === filter && styles.filterPillActive,
-            ]}
-            onPress={() => setWalletFilter(filter)}
-          >
-            <Text style={[
-              styles.filterPillText,
-              walletFilter === filter && styles.filterPillTextActive,
-            ]}>
-              {filter === 'Both' ? 'Both' : filter === 'Savings' ? 'Savings' : 'Expense'}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <Text style={styles.countText}>
+        {filtered.length} transaction{filtered.length !== 1 ? 's' : ''}
+      </Text>
 
       <ScrollView
         contentContainerStyle={styles.listContent}
@@ -117,10 +121,10 @@ export default function HistoryScreen() {
       >
         {filtered.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="receipt-outline" size={40} color={COLORS.subtext} />
+            <Ionicons name="receipt-outline" size={40} color={colors.subtext} />
             <Text style={styles.emptyText}>No transactions found</Text>
             <Text style={styles.emptySubtext}>
-              {typeFilter !== 'All' || walletFilter !== 'Both'
+              {typeFilter !== 'All' || search
                 ? 'Try adjusting your filters'
                 : 'Start by adding an expense or income'}
             </Text>
@@ -130,25 +134,15 @@ export default function HistoryScreen() {
             <View key={tx.id || index} style={styles.txCard}>
               <View style={[
                 styles.txIconContainer,
-                { backgroundColor: getTxIconColor(tx.type) + '22' }
+                { backgroundColor: getTxIconColor(tx.type) + '15' }
               ]}>
-                <Ionicons
-                  name={getTxIconName(tx.type)}
-                  size={22}
-                  color={getTxIconColor(tx.type)}
-                />
+                <Ionicons name={getTxIconName(tx.type)} size={20} color={getTxIconColor(tx.type)} />
               </View>
               <View style={styles.txMiddle}>
                 <Text style={styles.txLabel}>{tx.label}</Text>
-                <View style={styles.txMeta}>
-                  <Text style={styles.txCategory}>{tx.category}</Text>
-                  <Text style={styles.txDot}>·</Text>
-                  <Text style={styles.txWallet}>
-                    {tx.wallet === 'savings' ? 'Savings' : 'Expense'}
-                  </Text>
-                  <Text style={styles.txDot}>·</Text>
-                  <Text style={styles.txDate}>{tx.date}</Text>
-                </View>
+                <Text style={styles.txMeta}>
+                  {tx.category} · {tx.wallet} · {tx.date}
+                </Text>
               </View>
               <Text style={[styles.txAmount, { color: getAmountColor(tx.type) }]}>
                 {getAmountPrefix(tx.type)}{formatPeso(tx.amount)}
@@ -162,34 +156,81 @@ export default function HistoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
   header: {
-    paddingHorizontal: 24,
-    paddingTop: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 16,
     paddingBottom: 16,
+    gap: 12,
+    backgroundColor: COLORS.card,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: '700',
     color: COLORS.text,
   },
-  subtitle: {
-    fontSize: 13,
-    color: COLORS.subtext,
-    marginTop: 4,
+  searchRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    gap: 10,
+  },
+  searchBox: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.card,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: COLORS.text,
+  },
+  filterDropdown: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.card,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 6,
+  },
+  filterDropdownText: {
+    fontSize: 14,
+    color: COLORS.text,
+    fontWeight: '600',
   },
   filterSection: {
     flexDirection: 'row',
-    paddingHorizontal: 24,
-    paddingBottom: 10,
+    paddingHorizontal: 20,
+    paddingTop: 12,
     gap: 8,
   },
   filterPill: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 8,
     backgroundColor: COLORS.card,
@@ -197,8 +238,8 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   filterPillActive: {
-    backgroundColor: COLORS.savings,
-    borderColor: COLORS.savings,
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
   filterPillText: {
     fontSize: 13,
@@ -208,8 +249,15 @@ const styles = StyleSheet.create({
   filterPillTextActive: {
     color: '#fff',
   },
+  countText: {
+    fontSize: 13,
+    color: COLORS.subtext,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
   listContent: {
-    padding: 24,
+    padding: 20,
     paddingTop: 8,
     paddingBottom: 40,
   },
@@ -232,15 +280,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.card,
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 14,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   txIconContainer: {
-    width: 42,
-    height: 42,
+    width: 40,
+    height: 40,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
@@ -253,32 +301,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: COLORS.text,
-    marginBottom: 4,
+    marginBottom: 3,
   },
   txMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 4,
-  },
-  txCategory: {
     fontSize: 11,
     color: COLORS.subtext,
-  },
-  txDot: {
-    fontSize: 11,
-    color: COLORS.border,
-  },
-  txWallet: {
-    fontSize: 11,
-    color: COLORS.subtext,
-  },
-  txDate: {
-    fontSize: 11,
-    color: COLORS.subtext,
+    textTransform: 'capitalize',
   },
   txAmount: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     marginLeft: 8,
   },

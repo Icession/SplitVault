@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,11 +10,15 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
-import { COLORS, formatPeso } from '../constants';
+import { formatPeso } from '../constants';
 import { getWallets, saveWallets, addTransaction } from '../storage/storage';
+import { useTheme } from '../theme/ThemeContext';
 
-export default function AddIncomeScreen({ navigation }) {
+export default function AddIncomeScreen({ navigation, onClose }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [amount, setAmount] = useState('');
   const [label, setLabel] = useState('');
@@ -27,6 +31,11 @@ export default function AddIncomeScreen({ navigation }) {
     };
     loadWallets();
   }, []);
+
+  const handleClose = () => {
+    if (onClose) onClose();
+    else navigation.navigate('Home');
+  };
 
   const handleSubmit = async () => {
     const parsedAmount = parseFloat(amount);
@@ -52,7 +61,6 @@ export default function AddIncomeScreen({ navigation }) {
       amount: parsedAmount,
       label: label.trim(),
       category: 'Income',
-      emoji: '💵',
       date: new Date().toLocaleDateString('en-PH', {
         month: 'short',
         day: 'numeric',
@@ -72,7 +80,7 @@ export default function AddIncomeScreen({ navigation }) {
           onPress: () => {
             setAmount('');
             setLabel('');
-            navigation.navigate('Home');
+            handleClose();
           },
         },
       ]
@@ -90,8 +98,13 @@ export default function AddIncomeScreen({ navigation }) {
       >
 
         <View style={styles.header}>
-          <Text style={styles.title}>Add Income</Text>
-          <Text style={styles.subtitle}>Funds are added to your Savings wallet</Text>
+          <TouchableOpacity style={styles.backBtn} onPress={handleClose}>
+            <Ionicons name="arrow-back" size={22} color={colors.text} />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.title}>Add Income</Text>
+            <Text style={styles.subtitle}>Funds are added to your Savings wallet</Text>
+          </View>
         </View>
 
         <View style={styles.balanceCard}>
@@ -106,7 +119,7 @@ export default function AddIncomeScreen({ navigation }) {
         <TextInput
           style={styles.input}
           placeholder="e.g. 5000"
-          placeholderTextColor={COLORS.subtext}
+          placeholderTextColor={colors.subtext}
           keyboardType="numeric"
           value={amount}
           onChangeText={setAmount}
@@ -116,14 +129,14 @@ export default function AddIncomeScreen({ navigation }) {
         <TextInput
           style={styles.input}
           placeholder="e.g. Salary, Freelance, Allowance"
-          placeholderTextColor={COLORS.subtext}
+          placeholderTextColor={colors.subtext}
           value={label}
           onChangeText={setLabel}
         />
 
         <View style={styles.infoBox}>
           <Text style={styles.infoText}>
-            💡 Transfer funds to your Expense wallet when you're ready to spend.
+            Transfer funds to your Expense wallet when you're ready to spend.
           </Text>
         </View>
 
@@ -135,7 +148,7 @@ export default function AddIncomeScreen({ navigation }) {
           onPress={handleSubmit}
           disabled={!amount || !label}
         >
-          <Text style={styles.buttonText}>Add Income ➕</Text>
+          <Text style={styles.buttonText}>Add Income</Text>
         </TouchableOpacity>
 
       </ScrollView>
@@ -143,7 +156,7 @@ export default function AddIncomeScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -154,7 +167,20 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
     marginBottom: 28,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: COLORS.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   title: {
     fontSize: 24,
@@ -164,7 +190,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: COLORS.subtext,
-    marginTop: 4,
+    marginTop: 2,
   },
   balanceCard: {
     backgroundColor: COLORS.card,

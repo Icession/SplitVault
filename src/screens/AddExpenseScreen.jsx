@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,20 +10,22 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
-import { COLORS, CATEGORIES, formatPeso } from '../constants';
+import { CATEGORIES, formatPeso } from '../constants';
 import { getWallets, saveWallets, addTransaction } from '../storage/storage';
+import { useTheme } from '../theme/ThemeContext';
 
-export default function AddExpenseScreen({ navigation }) {
+export default function AddExpenseScreen({ navigation, onClose }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
-  // ─── STATE ────────────────────────────────────────────
   const [amount, setAmount] = useState('');
   const [label, setLabel] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedWallet, setSelectedWallet] = useState('expense');
   const [wallets, setWallets] = useState({ savings: 0, expense: 0 });
 
-  // ─── LOAD CURRENT BALANCES ────────────────────────────
   useEffect(() => {
     const loadWallets = async () => {
       const w = await getWallets();
@@ -32,7 +34,11 @@ export default function AddExpenseScreen({ navigation }) {
     loadWallets();
   }, []);
 
-  // ─── HANDLE SUBMISSION ────────────────────────────────
+  const handleClose = () => {
+    if (onClose) onClose();
+    else navigation.navigate('Home');
+  };
+
   const handleSubmit = async () => {
     const parsedAmount = parseFloat(amount);
 
@@ -56,13 +62,11 @@ export default function AddExpenseScreen({ navigation }) {
       return;
     }
 
-    // Deduct from the selected wallet
     const updatedWallets = {
       ...wallets,
       [selectedWallet]: wallets[selectedWallet] - parsedAmount,
     };
 
-    // Build the transaction entry
     const transaction = {
       id: Date.now().toString(),
       type: 'expense',
@@ -70,7 +74,6 @@ export default function AddExpenseScreen({ navigation }) {
       amount: parsedAmount,
       label: label.trim(),
       category: selectedCategory.label,
-      emoji: selectedCategory.emoji,
       date: new Date().toLocaleDateString('en-PH', {
         month: 'short',
         day: 'numeric',
@@ -81,22 +84,24 @@ export default function AddExpenseScreen({ navigation }) {
     await saveWallets(updatedWallets);
     await addTransaction(transaction);
 
-    Alert.alert('Expense Recorded', `${formatPeso(parsedAmount)} deducted from ${selectedWallet} wallet.`, [
-      {
-        text: 'OK',
-        onPress: () => {
-          // Reset form and navigate back to Home
-          setAmount('');
-          setLabel('');
-          setSelectedCategory(null);
-          setSelectedWallet('expense');
-          navigation.navigate('Home');
+    Alert.alert(
+      'Expense Recorded',
+      `${formatPeso(parsedAmount)} deducted from ${selectedWallet} wallet.`,
+      [
+        {
+          text: 'OK',
+          onPress: () => {
+            setAmount('');
+            setLabel('');
+            setSelectedCategory(null);
+            setSelectedWallet('expense');
+            handleClose();
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
-  // ─── UI ───────────────────────────────────────────────
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -107,13 +112,16 @@ export default function AddExpenseScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
       >
 
-        {/* ── HEADER ──────────────────────────────────── */}
         <View style={styles.header}>
-          <Text style={styles.title}>Add Expense</Text>
-          <Text style={styles.subtitle}>Deduct from your wallet</Text>
+          <TouchableOpacity style={styles.backBtn} onPress={handleClose}>
+            <Ionicons name="arrow-back" size={22} color={colors.text} />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.title}>Add Expense</Text>
+            <Text style={styles.subtitle}>Deduct from your wallet</Text>
+          </View>
         </View>
 
-        {/* ── WALLET SELECTOR ─────────────────────────── */}
         <Text style={styles.label}>Deduct From</Text>
         <View style={styles.walletRow}>
           {['expense', 'savings'].map((wallet) => (
@@ -122,25 +130,25 @@ export default function AddExpenseScreen({ navigation }) {
               style={[
                 styles.walletBtn,
                 selectedWallet === wallet && {
-                  borderColor: wallet === 'savings' ? COLORS.savings : COLORS.expense,
+                  borderColor: wallet === 'savings' ? colors.savings : colors.expense,
                   backgroundColor: wallet === 'savings'
-                    ? COLORS.savings + '22'
-                    : COLORS.expense + '22',
+                    ? colors.savings + '22'
+                    : colors.expense + '22',
                 },
               ]}
               onPress={() => setSelectedWallet(wallet)}
             >
-              <Text style={styles.walletBtnEmoji}>
-                {wallet === 'savings' ? '🐷' : '💳'}
-              </Text>
+              <Ionicons
+                name={wallet === 'savings' ? 'wallet' : 'card'}
+                size={22}
+                color={wallet === 'savings' ? colors.savings : colors.expense}
+              />
               <Text style={styles.walletBtnLabel}>
                 {wallet.charAt(0).toUpperCase() + wallet.slice(1)}
               </Text>
               <Text style={[
                 styles.walletBtnBalance,
-                {
-                  color: wallet === 'savings' ? COLORS.savings : COLORS.expense,
-                },
+                { color: wallet === 'savings' ? colors.savings : colors.expense },
               ]}>
                 {formatPeso(wallets[wallet])}
               </Text>
@@ -148,28 +156,25 @@ export default function AddExpenseScreen({ navigation }) {
           ))}
         </View>
 
-        {/* ── AMOUNT INPUT ────────────────────────────── */}
         <Text style={styles.label}>Amount (₱)</Text>
         <TextInput
           style={styles.input}
           placeholder="e.g. 250"
-          placeholderTextColor={COLORS.subtext}
+          placeholderTextColor={colors.subtext}
           keyboardType="numeric"
           value={amount}
           onChangeText={setAmount}
         />
 
-        {/* ── DESCRIPTION INPUT ───────────────────────── */}
         <Text style={styles.label}>Description</Text>
         <TextInput
           style={styles.input}
           placeholder="e.g. Lunch at Jollibee"
-          placeholderTextColor={COLORS.subtext}
+          placeholderTextColor={colors.subtext}
           value={label}
           onChangeText={setLabel}
         />
 
-        {/* ── CATEGORY SELECTOR ───────────────────────── */}
         <Text style={styles.label}>Category</Text>
         <View style={styles.categoryGrid}>
           {CATEGORIES.map((cat) => (
@@ -181,13 +186,16 @@ export default function AddExpenseScreen({ navigation }) {
               ]}
               onPress={() => setSelectedCategory(cat)}
             >
-              <Text style={styles.categoryEmoji}>{cat.emoji}</Text>
-              <Text style={styles.categoryLabel}>{cat.label}</Text>
+              <Text style={[
+                styles.categoryLabel,
+                selectedCategory?.label === cat.label && { color: colors.danger },
+              ]}>
+                {cat.label}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* ── SUBMIT BUTTON ───────────────────────────── */}
         <TouchableOpacity
           style={[
             styles.button,
@@ -196,7 +204,7 @@ export default function AddExpenseScreen({ navigation }) {
           onPress={handleSubmit}
           disabled={!amount || !selectedCategory || !label}
         >
-          <Text style={styles.buttonText}>Record Expense ➖</Text>
+          <Text style={styles.buttonText}>Record Expense</Text>
         </TouchableOpacity>
 
       </ScrollView>
@@ -204,8 +212,7 @@ export default function AddExpenseScreen({ navigation }) {
   );
 }
 
-// ─── STYLES ───────────────────────────────────────────
-const styles = StyleSheet.create({
+const createStyles = (COLORS) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
@@ -216,7 +223,20 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
     marginBottom: 28,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: COLORS.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
   title: {
     fontSize: 24,
@@ -226,7 +246,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: COLORS.subtext,
-    marginTop: 4,
+    marginTop: 2,
   },
   label: {
     fontSize: 14,
@@ -257,16 +277,12 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     padding: 14,
     alignItems: 'center',
-  },
-  walletBtnEmoji: {
-    fontSize: 24,
-    marginBottom: 4,
+    gap: 6,
   },
   walletBtnLabel: {
     fontSize: 13,
     fontWeight: '600',
     color: COLORS.text,
-    marginBottom: 2,
   },
   walletBtnBalance: {
     fontSize: 12,
@@ -279,24 +295,19 @@ const styles = StyleSheet.create({
     marginBottom: 28,
   },
   categoryBtn: {
-    width: '22%',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     backgroundColor: COLORS.card,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: 10,
-    alignItems: 'center',
   },
   categoryBtnSelected: {
-    borderColor: COLORS.savings,
-    backgroundColor: COLORS.savings + '22',
-  },
-  categoryEmoji: {
-    fontSize: 22,
-    marginBottom: 4,
+    borderColor: COLORS.danger,
+    backgroundColor: COLORS.danger + '22',
   },
   categoryLabel: {
-    fontSize: 10,
+    fontSize: 13,
     color: COLORS.subtext,
     fontWeight: '600',
   },

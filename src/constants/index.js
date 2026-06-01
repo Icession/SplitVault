@@ -1,29 +1,17 @@
-// COLORS 
-export const COLORS = {
-  savings: '#A78BFA',
-  expense: '#34D399',
-  danger: '#F87171',
-  warning: '#FBBF24',
-  background: '#0F172A',
-  card: '#1E293B',
-  text: '#F1F5F9',
-  subtext: '#94A3B8',
-  border: '#334155',
-};
+import { lightColors } from '../theme/Themes';
+export const COLORS = lightColors;
 
-// CATEGORIES
 export const CATEGORIES = [
-  { label: 'Food',      emoji: '🍜' },
-  { label: 'Games',     emoji: '🎮' },
-  { label: 'Transport', emoji: '🚌' },
-  { label: 'Shopping',  emoji: '🛍️' },
-  { label: 'Needs',     emoji: '🏠' },
-  { label: 'Wants',     emoji: '✨' },
-  { label: 'Health',    emoji: '💊' },
-  { label: 'Other',     emoji: '📦' },
+  { label: 'Food' },
+  { label: 'Games' },
+  { label: 'Transport' },
+  { label: 'Shopping' },
+  { label: 'Needs' },
+  { label: 'Wants' },
+  { label: 'Health' },
+  { label: 'Other' },
 ];
 
-// CURRENCY FORMATTER
 export const formatPeso = (amount) => {
   return '₱' + Number(amount).toLocaleString('en-PH', {
     minimumFractionDigits: 2,
@@ -31,10 +19,10 @@ export const formatPeso = (amount) => {
   });
 };
 
-// WALLET KEYS
 export const STORAGE_KEYS = {
   wallets: 'sv_wallets',
   transactions: 'sv_transactions',
   goals: 'sv_goals',
   isSetup: 'sv_is_setup',
+  theme: 'sv_theme',
 };

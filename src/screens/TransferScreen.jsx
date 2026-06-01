@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,10 +12,13 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { COLORS, formatPeso } from '../constants';
+import { formatPeso } from '../constants';
 import { getWallets, saveWallets, addTransaction } from '../storage/storage';
+import { useTheme } from '../theme/ThemeContext';
 
 export default function TransferScreen({ navigation }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [amount, setAmount] = useState('');
   const [direction, setDirection] = useState('savingsToExpense');
@@ -103,20 +106,20 @@ export default function TransferScreen({ navigation }) {
         </View>
 
         <View style={styles.walletsRow}>
-          <View style={[styles.walletCard, { borderColor: COLORS.savings }]}>
-            <Ionicons name="wallet" size={24} color={COLORS.savings} style={styles.walletIcon} />
+          <View style={[styles.walletCard, { borderColor: colors.savings }]}>
+            <Ionicons name="wallet" size={24} color={colors.savings} style={styles.walletIcon} />
             <Text style={styles.walletLabel}>Savings</Text>
-            <Text style={[styles.walletAmount, { color: COLORS.savings }]}>
+            <Text style={[styles.walletAmount, { color: colors.savings }]}>
               {formatPeso(wallets.savings)}
             </Text>
           </View>
 
-          <Ionicons name="swap-horizontal" size={24} color={COLORS.subtext} />
+          <Ionicons name="swap-horizontal" size={24} color={colors.subtext} />
 
-          <View style={[styles.walletCard, { borderColor: COLORS.expense }]}>
-            <Ionicons name="card" size={24} color={COLORS.expense} style={styles.walletIcon} />
+          <View style={[styles.walletCard, { borderColor: colors.expense }]}>
+            <Ionicons name="card" size={24} color={colors.expense} style={styles.walletIcon} />
             <Text style={styles.walletLabel}>Expense</Text>
-            <Text style={[styles.walletAmount, { color: COLORS.expense }]}>
+            <Text style={[styles.walletAmount, { color: colors.expense }]}>
               {formatPeso(wallets.expense)}
             </Text>
           </View>
@@ -131,8 +134,8 @@ export default function TransferScreen({ navigation }) {
               to: 'Expense',
               fromIcon: 'wallet',
               toIcon: 'card',
-              fromColor: COLORS.savings,
-              toColor: COLORS.expense,
+              fromColor: colors.savings,
+              toColor: colors.expense,
             },
             {
               key: 'expenseToSavings',
@@ -140,8 +143,8 @@ export default function TransferScreen({ navigation }) {
               to: 'Savings',
               fromIcon: 'card',
               toIcon: 'wallet',
-              fromColor: COLORS.expense,
-              toColor: COLORS.savings,
+              fromColor: colors.expense,
+              toColor: colors.savings,
             },
           ].map((option) => (
             <TouchableOpacity
@@ -154,7 +157,7 @@ export default function TransferScreen({ navigation }) {
             >
               <View style={styles.directionInner}>
                 <Ionicons name={option.fromIcon} size={18} color={option.fromColor} />
-                <Ionicons name="arrow-forward" size={14} color={COLORS.subtext} />
+                <Ionicons name="arrow-forward" size={14} color={colors.subtext} />
                 <Ionicons name={option.toIcon} size={18} color={option.toColor} />
               </View>
               <Text style={styles.directionSub}>{option.from} to {option.to}</Text>
@@ -165,7 +168,7 @@ export default function TransferScreen({ navigation }) {
         <View style={styles.sourceInfo}>
           <Text style={styles.sourceInfoText}>
             Available in {sourceWallet} wallet:{' '}
-            <Text style={{ color: COLORS.text, fontWeight: '700' }}>
+            <Text style={{ color: colors.text, fontWeight: '700' }}>
               {formatPeso(sourceBalance)}
             </Text>
           </Text>
@@ -175,7 +178,7 @@ export default function TransferScreen({ navigation }) {
         <TextInput
           style={styles.input}
           placeholder="e.g. 1000"
-          placeholderTextColor={COLORS.subtext}
+          placeholderTextColor={colors.subtext}
           keyboardType="numeric"
           value={amount}
           onChangeText={setAmount}
@@ -187,7 +190,7 @@ export default function TransferScreen({ navigation }) {
             <View style={styles.previewRow}>
               <Text style={styles.previewItem}>
                 Savings:{' '}
-                <Text style={{ color: COLORS.savings, fontWeight: '700' }}>
+                <Text style={{ color: colors.savings, fontWeight: '700' }}>
                   {formatPeso(
                     isExpenseToSavings
                       ? wallets.savings + (parseFloat(amount) || 0)
@@ -197,7 +200,7 @@ export default function TransferScreen({ navigation }) {
               </Text>
               <Text style={styles.previewItem}>
                 Expense:{' '}
-                <Text style={{ color: COLORS.expense, fontWeight: '700' }}>
+                <Text style={{ color: colors.expense, fontWeight: '700' }}>
                   {formatPeso(
                     isExpenseToSavings
                       ? wallets.expense - (parseFloat(amount) || 0)
@@ -222,7 +225,7 @@ export default function TransferScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,8 +12,9 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { COLORS, formatPeso } from '../constants';
+import { formatPeso } from '../constants';
 import { getGoals, saveGoals, getWallets } from '../storage/storage';
+import { useTheme } from '../theme/ThemeContext';
 
 const GOAL_ICONS = [
   { name: 'home', label: 'Home' },
@@ -28,7 +29,9 @@ const GOAL_ICONS = [
   { name: 'diamond', label: 'Luxury' },
 ];
 
-export default function GoalsScreen() {
+export default function GoalsScreen({ navigation }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [goals, setGoals] = useState([]);
   const [savingsBalance, setSavingsBalance] = useState(0);
@@ -108,10 +111,17 @@ export default function GoalsScreen() {
     <View style={styles.container}>
 
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.navigate('Home')} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
+        </TouchableOpacity>
         <Text style={styles.title}>Savings Goals</Text>
-        <Text style={styles.subtitle}>
-          Savings wallet: {formatPeso(savingsBalance)}
-        </Text>
+        <TouchableOpacity
+          style={styles.addBtn}
+          onPress={() => setModalVisible(true)}
+        >
+          <Ionicons name="add" size={16} color="#fff" />
+          <Text style={styles.addBtnText}>Add Goal</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -120,13 +130,7 @@ export default function GoalsScreen() {
       >
         {goals.length === 0 ? (
           <View style={styles.emptyState}>
-            <View style={styles.emptyIconContainer}>
-              <Ionicons name="flag" size={40} color={COLORS.goals} />
-            </View>
-            <Text style={styles.emptyText}>No goals yet</Text>
-            <Text style={styles.emptySubtext}>
-              Tap the button below to create your first savings goal
-            </Text>
+            <Text style={styles.emptyText}>No goals yet. Set your first savings goal!</Text>
           </View>
         ) : (
           goals.map((goal) => {
@@ -136,29 +140,25 @@ export default function GoalsScreen() {
             return (
               <View key={goal.id} style={[
                 styles.goalCard,
-                isComplete && { borderColor: COLORS.expense },
+                isComplete && { borderColor: colors.primary },
               ]}>
-
                 <View style={styles.goalTop}>
                   <View style={[
                     styles.goalIconContainer,
-                    { backgroundColor: isComplete ? COLORS.expense + '22' : COLORS.goals + '22' }
+                    { backgroundColor: isComplete ? colors.primary + '20' : colors.goals + '20' }
                   ]}>
                     <Ionicons
                       name={goal.icon || 'flag'}
                       size={22}
-                      color={isComplete ? COLORS.expense : COLORS.goals}
+                      color={isComplete ? colors.primary : colors.goals}
                     />
                   </View>
                   <View style={styles.goalInfo}>
                     <Text style={styles.goalName}>{goal.name}</Text>
                     <Text style={styles.goalDate}>Created {goal.createdAt}</Text>
                   </View>
-                  <TouchableOpacity
-                    onPress={() => handleDeleteGoal(goal.id)}
-                    style={styles.deleteBtn}
-                  >
-                    <Ionicons name="close" size={18} color={COLORS.subtext} />
+                  <TouchableOpacity onPress={() => handleDeleteGoal(goal.id)} style={styles.deleteBtn}>
+                    <Ionicons name="close" size={18} color={colors.subtext} />
                   </TouchableOpacity>
                 </View>
 
@@ -176,7 +176,7 @@ export default function GoalsScreen() {
                     styles.progressFill,
                     {
                       width: `${Math.round(progress * 100)}%`,
-                      backgroundColor: isComplete ? COLORS.expense : COLORS.goals,
+                      backgroundColor: isComplete ? colors.primary : colors.goals,
                     },
                   ]} />
                 </View>
@@ -184,16 +184,14 @@ export default function GoalsScreen() {
                 <View style={styles.goalFooter}>
                   <Text style={[
                     styles.goalPercent,
-                    { color: isComplete ? COLORS.expense : COLORS.goals },
+                    { color: isComplete ? colors.primary : colors.goals },
                   ]}>
                     {Math.round(progress * 100)}%
                   </Text>
                   {isComplete ? (
                     <View style={styles.completeTag}>
-                      <Ionicons name="checkmark-circle" size={14} color={COLORS.expense} />
-                      <Text style={[styles.completeTagText, { color: COLORS.expense }]}>
-                        Goal Reached!
-                      </Text>
+                      <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
+                      <Text style={[styles.completeTagText, { color: colors.primary }]}>Goal Reached!</Text>
                     </View>
                   ) : (
                     <Text style={styles.goalRemaining}>
@@ -201,20 +199,11 @@ export default function GoalsScreen() {
                     </Text>
                   )}
                 </View>
-
               </View>
             );
           })
         )}
       </ScrollView>
-
-      <TouchableOpacity
-        style={styles.addButton}
-        onPress={() => setModalVisible(true)}
-      >
-        <Ionicons name="add" size={20} color="#fff" />
-        <Text style={styles.addButtonText}>New Goal</Text>
-      </TouchableOpacity>
 
       <Modal
         visible={modalVisible}
@@ -224,14 +213,13 @@ export default function GoalsScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalSheet}>
-
             <Text style={styles.modalTitle}>New Savings Goal</Text>
 
             <Text style={styles.label}>Goal Name</Text>
             <TextInput
               style={styles.input}
               placeholder="e.g. New Laptop, Travel Fund"
-              placeholderTextColor={COLORS.subtext}
+              placeholderTextColor={colors.subtext}
               value={goalName}
               onChangeText={setGoalName}
             />
@@ -240,7 +228,7 @@ export default function GoalsScreen() {
             <TextInput
               style={styles.input}
               placeholder="e.g. 25000"
-              placeholderTextColor={COLORS.subtext}
+              placeholderTextColor={colors.subtext}
               keyboardType="numeric"
               value={goalTarget}
               onChangeText={setGoalTarget}
@@ -264,7 +252,7 @@ export default function GoalsScreen() {
                   <Ionicons
                     name={icon.name}
                     size={22}
-                    color={goalIcon === icon.name ? COLORS.goals : COLORS.subtext}
+                    color={goalIcon === icon.name ? colors.primary : colors.subtext}
                   />
                 </TouchableOpacity>
               ))}
@@ -277,19 +265,14 @@ export default function GoalsScreen() {
               >
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
-                style={[
-                  styles.confirmBtn,
-                  { opacity: goalName && goalTarget ? 1 : 0.5 },
-                ]}
+                style={[styles.confirmBtn, { opacity: goalName && goalTarget ? 1 : 0.5 }]}
                 onPress={handleAddGoal}
                 disabled={!goalName || !goalTarget}
               >
                 <Text style={styles.confirmBtnText}>Create Goal</Text>
               </TouchableOpacity>
             </View>
-
           </View>
         </View>
       </Modal>
@@ -298,55 +281,61 @@ export default function GoalsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
   header: {
-    paddingHorizontal: 24,
-    paddingTop: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 16,
     paddingBottom: 16,
+    gap: 12,
+    backgroundColor: COLORS.card,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
-    fontSize: 24,
+    flex: 1,
+    fontSize: 18,
     fontWeight: '700',
     color: COLORS.text,
   },
-  subtitle: {
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    gap: 4,
+  },
+  addBtnText: {
     fontSize: 13,
-    color: COLORS.subtext,
-    marginTop: 4,
+    fontWeight: '700',
+    color: '#fff',
   },
   content: {
-    padding: 24,
-    paddingTop: 8,
-    paddingBottom: 100,
+    padding: 20,
+    paddingBottom: 40,
   },
   emptyState: {
     alignItems: 'center',
     paddingVertical: 60,
-    gap: 10,
-  },
-  emptyIconContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 20,
-    backgroundColor: COLORS.goals + '22',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
   },
   emptyText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.text,
-  },
-  emptySubtext: {
-    fontSize: 13,
+    fontSize: 14,
     color: COLORS.subtext,
     textAlign: 'center',
-    lineHeight: 20,
   },
   goalCard: {
     backgroundColor: COLORS.card,
@@ -433,27 +422,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.subtext,
   },
-  addButton: {
-    position: 'absolute',
-    bottom: 24,
-    left: 24,
-    right: 24,
-    backgroundColor: COLORS.goals,
-    borderRadius: 14,
-    padding: 16,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  addButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
-  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
   modalSheet: {
@@ -501,8 +472,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconBtnSelected: {
-    borderColor: COLORS.goals,
-    backgroundColor: COLORS.goals + '22',
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary + '20',
   },
   modalActions: {
     flexDirection: 'row',
@@ -524,7 +495,7 @@ const styles = StyleSheet.create({
   },
   confirmBtn: {
     flex: 1,
-    backgroundColor: COLORS.goals,
+    backgroundColor: COLORS.primary,
     borderRadius: 14,
     padding: 14,
     alignItems: 'center',
