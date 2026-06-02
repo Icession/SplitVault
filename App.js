@@ -15,6 +15,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
 import { getIsSetup, clearAllData } from './src/storage/storage';
 import { isLockEnabled, clearLock } from './src/storage/lock';
+import { subscribeToAuth, logOut } from './src/firebase/auth';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import TabNavigator from './src/navigation/TabNavigator';
 import SetupScreen from './src/screens/SetupScreen';
@@ -25,13 +26,25 @@ function AppContent() {
   const { colors, isDark } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
+
   const [isSetup, setIsSetup] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loadingSetup, setLoadingSetup] = useState(false);
 
   const [lockChecked, setLockChecked] = useState(false);
   const [locked, setLocked] = useState(false);
-  
+
+  // Listen to real Firebase auth state (keeps users signed in across restarts).
+  useEffect(() => {
+    const unsubscribe = subscribeToAuth((u) => {
+      setUser(u);
+      setAuthReady(true);
+    });
+    return unsubscribe;
+  }, []);
+
+  // Check the app lock once on launch.
   useEffect(() => {
     let active = true;
     isLockEnabled().then((on) => {
@@ -45,80 +58,70 @@ function AppContent() {
     };
   }, []);
 
+  // Whenever a user is signed in, check whether they've completed setup.
   useEffect(() => {
-    if (!isLoggedIn) {
-      setLoading(false);
-      return;
-    }
+    if (!user) return;
     let active = true;
-    setLoading(true);
+    setLoadingSetup(true);
     getIsSetup().then((setupComplete) => {
       if (active) {
         setIsSetup(setupComplete);
-        setLoading(false);
+        setLoadingSetup(false);
       }
     });
     return () => {
       active = false;
     };
-  }, [isLoggedIn]);
+  }, [user]);
 
   const navTheme = isDark
     ? { ...DarkTheme, colors: { ...DarkTheme.colors, background: colors.background } }
     : { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: colors.background } };
 
-  const handleLockReset = async () => {
+  // Full reset: wipe local data, clear the lock, and sign out.
+  const handleFullReset = async () => {
     await clearAllData();
     await clearLock();
     setLocked(false);
-    setIsLoggedIn(false);
-    setIsSetup(false);
+    await logOut();
   };
 
-  if (!lockChecked) {
-    return (
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <StatusBar style={isDark ? 'light' : 'dark'} />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.savings} />
-        </View>
-      </SafeAreaView>
-    );
+  const Spinner = () => (
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.savings} />
+      </View>
+    </SafeAreaView>
+  );
+
+  // Wait until we know both the lock state and the auth state.
+  if (!lockChecked || !authReady) {
+    return <Spinner />;
   }
 
+  // App lock gate (device-level), shown before anything else.
   if (locked) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <StatusBar style={isDark ? 'light' : 'dark'} />
-        <LockScreen
-          onUnlock={() => {
-            setLocked(false);
-            setIsLoggedIn(true);
-          }}
-          onReset={handleLockReset}
-        />
+        <LockScreen onUnlock={() => setLocked(false)} onReset={handleFullReset} />
       </SafeAreaView>
     );
   }
 
-  if (!isLoggedIn) {
+  // Not signed in → show the auth flow.
+  if (!user) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <StatusBar style={isDark ? 'light' : 'dark'} />
-        <AuthFlow onAuthenticated={() => setIsLoggedIn(true)} />
+        <AuthFlow />
       </SafeAreaView>
     );
   }
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <StatusBar style={isDark ? 'light' : 'dark'} />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.savings} />
-        </View>
-      </SafeAreaView>
-    );
+  if (loadingSetup) {
+    return <Spinner />;
   }
 
   return (
@@ -126,11 +129,7 @@ function AppContent() {
       <NavigationContainer theme={navTheme}>
         <StatusBar style={isDark ? 'light' : 'dark'} />
         {isSetup ? (
-          <TabNavigator
-            onReset={() => {
-              setIsLoggedIn(false);
-            }}
-          />
+          <TabNavigator onReset={handleFullReset} />
         ) : (
           <SetupScreen onComplete={() => setIsSetup(true)} />
         )}

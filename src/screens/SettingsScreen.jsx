@@ -32,6 +32,7 @@ import {
   setBiometricEnabled,
   clearLock,
 } from '../storage/lock';
+import { logOut } from '../firebase/auth';
 
 const CURRENCIES = [
   { code: 'PHP', label: 'Philippine Peso (₱)' },
@@ -84,7 +85,7 @@ export default function SettingsScreen({ onReset }) {
 
   const [lockEnabled, setLockEnabledState] = useState(false);
   const [bioAvailable, setBioAvailable] = useState(false);
-  const [lockStep, setLockStep] = useState(null); // 'create' | 'confirm' | 'biometric'
+  const [lockStep, setLockStep] = useState(null);
   const [firstPin, setFirstPin] = useState('');
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
@@ -247,7 +248,7 @@ export default function SettingsScreen({ onReset }) {
       icon: 'log-out-outline',
     });
     if (!ok) return;
-    onReset();
+    await logOut();
   };
 
   const handleExport = async () => {
@@ -282,14 +283,7 @@ export default function SettingsScreen({ onReset }) {
       icon: 'warning-outline',
     });
     if (!ok) return;
-    await AsyncStorage.multiRemove([
-      STORAGE_KEYS.wallets,
-      STORAGE_KEYS.transactions,
-      STORAGE_KEYS.goals,
-      STORAGE_KEYS.isSetup,
-      STORAGE_KEYS.profile,
-    ]);
-    onReset();
+    await onReset();
   };
 
   const handleClearTransactions = async () => {

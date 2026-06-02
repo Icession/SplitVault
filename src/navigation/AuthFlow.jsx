@@ -1,19 +1,14 @@
 ﻿import React, { useState } from 'react';
 
 import AuthScreen from '../screens/AuthScreen';
-import ResetPasswordScreen from '../screens/ResetPasswordScreen';
+import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 
-export default function AuthFlow({ onAuthenticated }) {
+export default function AuthFlow() {
   const [screen, setScreen] = useState('auth');
 
-  if (screen === 'reset') {
-    return <ResetPasswordScreen onRequestNewLink={() => setScreen('auth')} />;
+  if (screen === 'forgot') {
+    return <ForgotPasswordScreen onBack={() => setScreen('auth')} />;
   }
 
-  return (
-    <AuthScreen
-      onAuthenticated={onAuthenticated}
-      onForgotPassword={() => setScreen('reset')}
-    />
-  );
+  return <AuthScreen onForgotPassword={() => setScreen('forgot')} />;
 }

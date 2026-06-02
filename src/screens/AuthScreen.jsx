@@ -9,6 +9,8 @@ import {
   Animated,
   Pressable,
   TouchableOpacity,
+  ActivityIndicator,
+  Alert,
   StatusBar as RNStatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +20,7 @@ import { useTheme } from '../theme/ThemeContext';
 import FadeInView from '../components/FadeInView';
 import PressableScale from '../components/PressableScale';
 import FloatingField from '../components/FloatingField';
+import { signIn, signUp } from '../firebase/auth';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HERO = '#064E3B';
@@ -25,19 +28,21 @@ const HERO = '#064E3B';
 const heroTopPad =
   (Platform.OS === 'android' ? (RNStatusBar.currentHeight || 24) : 54) + 22;
 
-export default function AuthScreen({ onAuthenticated, onForgotPassword }) {
+export default function AuthScreen({ onForgotPassword }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const [mode, setMode] = useState('login'); // 'login' | 'register'
+  const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [authError, setAuthError] = useState('');
 
   const [segW, setSegW] = useState(0);
-  const seg = useRef(new Animated.Value(0)).current;   // 0 = login, 1 = register
-  const fade = useRef(new Animated.Value(1)).current;  // form crossfade
-  const slide = useRef(new Animated.Value(0)).current; // form slide
+  const seg = useRef(new Animated.Value(0)).current;
+  const fade = useRef(new Animated.Value(1)).current;
+  const slide = useRef(new Animated.Value(0)).current;
 
   const isRegister = mode === 'register';
 
@@ -59,6 +64,7 @@ export default function AuthScreen({ onAuthenticated, onForgotPassword }) {
 
   const switchMode = (next) => {
     if (next === mode) return;
+    setAuthError('');
     const dir = next === 'register' ? 1 : -1;
     Animated.spring(seg, {
       toValue: next === 'register' ? 1 : 0,
@@ -74,6 +80,26 @@ export default function AuthScreen({ onAuthenticated, onForgotPassword }) {
         Animated.spring(slide, { toValue: 0, useNativeDriver: true, bounciness: 4, speed: 14 }),
       ]).start();
     });
+  };
+
+  const handleSubmit = async () => {
+    if (!isValid || submitting) return;
+    setAuthError('');
+    setSubmitting(true);
+    const result = isRegister
+      ? await signUp(email, password)
+      : await signIn(email, password);
+    setSubmitting(false);
+    if (!result.success) {
+      setAuthError(result.error);
+    }
+  };
+
+  const handleGoogle = () => {
+    Alert.alert(
+      'Coming soon',
+      'Google sign-in will be available in an upcoming update. For now, please use your email and password.'
+    );
   };
 
   const segTranslate = seg.interpolate({
@@ -155,7 +181,7 @@ export default function AuthScreen({ onAuthenticated, onForgotPassword }) {
 
                 <PressableScale
                   style={styles.googleBtn}
-                  onPress={onAuthenticated}
+                  onPress={handleGoogle}
                   android_ripple={{ color: colors.border }}
                 >
                   <Ionicons name="logo-google" size={18} color="#EA4335" />
@@ -172,7 +198,7 @@ export default function AuthScreen({ onAuthenticated, onForgotPassword }) {
                   label="Email"
                   icon="mail-outline"
                   value={email}
-                  onChangeText={setEmail}
+                  onChangeText={(t) => { setEmail(t); if (authError) setAuthError(''); }}
                   keyboardType="email-address"
                   autoComplete="email"
                   textContentType="emailAddress"
@@ -184,7 +210,7 @@ export default function AuthScreen({ onAuthenticated, onForgotPassword }) {
                   label="Password"
                   icon="lock-closed-outline"
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={(t) => { setPassword(t); if (authError) setAuthError(''); }}
                   secure
                   autoComplete={isRegister ? 'password-new' : 'password'}
                   textContentType={isRegister ? 'newPassword' : 'password'}
@@ -233,16 +259,29 @@ export default function AuthScreen({ onAuthenticated, onForgotPassword }) {
                   </TouchableOpacity>
                 )}
 
+                {authError ? (
+                  <View style={styles.authErrorRow}>
+                    <Ionicons name="alert-circle" size={15} color={colors.danger} />
+                    <Text style={styles.authErrorText}>{authError}</Text>
+                  </View>
+                ) : null}
+
                 <PressableScale
-                  style={[styles.primaryBtn, { opacity: isValid ? 1 : 0.5 }]}
-                  onPress={onAuthenticated}
-                  disabled={!isValid}
+                  style={[styles.primaryBtn, { opacity: isValid && !submitting ? 1 : 0.5 }]}
+                  onPress={handleSubmit}
+                  disabled={!isValid || submitting}
                   android_ripple={{ color: 'rgba(255,255,255,0.2)' }}
                 >
-                  <Text style={styles.primaryBtnText}>
-                    {isRegister ? 'Create account' : 'Log In'}
-                  </Text>
-                  <Ionicons name="arrow-forward" size={18} color="#fff" />
+                  {submitting ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <>
+                      <Text style={styles.primaryBtnText}>
+                        {isRegister ? 'Create account' : 'Log In'}
+                      </Text>
+                      <Ionicons name="arrow-forward" size={18} color="#fff" />
+                    </>
+                  )}
                 </PressableScale>
               </Animated.View>
 
@@ -459,6 +498,19 @@ const createStyles = (COLORS) => StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 4,
+  },
+  authErrorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  authErrorText: {
+    flex: 1,
+    fontSize: 13,
+    color: COLORS.danger,
+    fontWeight: '600',
   },
   primaryBtnText: {
     fontSize: 15,
