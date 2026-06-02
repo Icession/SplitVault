@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { formatPeso } from '../constants';
+import { formatPeso, sanitizeAmount } from '../constants';
 import { getWallets, saveWallets, addTransaction } from '../storage/storage';
 import { useTheme } from '../theme/ThemeContext';
 import FadeInView from '../components/FadeInView';
@@ -216,7 +216,7 @@ export default function TransferScreen({ navigation }) {
                 placeholderTextColor={colors.subtext}
                 keyboardType="numeric"
                 value={amount}
-                onChangeText={setAmount}
+                onChangeText={(t) => setAmount(sanitizeAmount(t))}
               />
               <TouchableOpacity onPress={fillMax} disabled={sourceBalance <= 0}>
                 <Text style={[styles.maxBtn, { opacity: sourceBalance > 0 ? 1 : 0.4 }]}>MAX</Text>

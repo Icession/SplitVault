@@ -12,12 +12,13 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { formatPeso } from '../constants';
+import { formatPeso, sanitizeAmount } from '../constants';
 import { getGoals, saveGoals } from '../storage/storage';
 import { useTheme } from '../theme/ThemeContext';
 import FadeInView from '../components/FadeInView';
 import PressableScale from '../components/PressableScale';
 import ProgressBar from '../components/ProgressBar';
+import useConfirm from '../components/useConfirm';
 
 const GOAL_ICONS = [
   { name: 'home', label: 'Home' },
@@ -35,6 +36,7 @@ const GOAL_ICONS = [
 export default function GoalsScreen({ navigation }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { confirm, dialog } = useConfirm();
 
   const [goals, setGoals] = useState([]);
 
@@ -118,19 +120,18 @@ export default function GoalsScreen({ navigation }) {
     setModalVisible(false);
   };
 
-  const handleDeleteGoal = (id) => {
-    Alert.alert('Delete Goal', 'Are you sure you want to remove this goal?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          const updated = goals.filter((g) => g.id !== id);
-          await saveGoals(updated);
-          setGoals(updated);
-        },
-      },
-    ]);
+  const handleDeleteGoal = async (id) => {
+    const ok = await confirm({
+      title: 'Delete Goal',
+      message: 'Are you sure you want to remove this goal?',
+      confirmText: 'Delete',
+      destructive: true,
+      icon: 'trash-outline',
+    });
+    if (!ok) return;
+    const updated = goals.filter((g) => g.id !== id);
+    await saveGoals(updated);
+    setGoals(updated);
   };
 
   const openFunds = (goal) => {
@@ -312,7 +313,7 @@ export default function GoalsScreen({ navigation }) {
               placeholderTextColor={colors.subtext}
               keyboardType="numeric"
               value={goalTarget}
-              onChangeText={setGoalTarget}
+              onChangeText={(t) => setGoalTarget(sanitizeAmount(t))}
             />
 
             <Text style={styles.label}>Icon</Text>
@@ -378,7 +379,7 @@ export default function GoalsScreen({ navigation }) {
               placeholderTextColor={colors.subtext}
               keyboardType="numeric"
               value={fundsAmount}
-              onChangeText={setFundsAmount}
+              onChangeText={(t) => setFundsAmount(sanitizeAmount(t))}
             />
 
             <View style={styles.modalActions}>
@@ -397,6 +398,7 @@ export default function GoalsScreen({ navigation }) {
         </View>
       </Modal>
 
+      {dialog}
     </View>
   );
 }

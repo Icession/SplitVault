@@ -1,3 +1,4 @@
+// constants/index.js
 import { lightColors } from '../theme/Themes';
 
 export const COLORS = lightColors;
@@ -20,6 +21,9 @@ export const formatPeso = (amount) => {
   });
 };
 
+export const sanitizeAmount = (t) =>
+  String(t).replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+
 export const STORAGE_KEYS = {
   wallets: 'sv_wallets',
   transactions: 'sv_transactions',
@@ -27,4 +31,5 @@ export const STORAGE_KEYS = {
   isSetup: 'sv_is_setup',
   theme: 'sv_theme',
   profile: 'sv_profile',
+  categories: 'sv_categories',
 };

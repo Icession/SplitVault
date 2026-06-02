@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { formatPeso } from '../constants';
+import { formatPeso, sanitizeAmount } from '../constants';
 import { getWallets, saveWallets, addTransaction } from '../storage/storage';
 import { useTheme } from '../theme/ThemeContext';
 import FadeInView from '../components/FadeInView';
@@ -119,7 +119,7 @@ export default function AddIncomeScreen({ navigation, onClose }) {
           placeholderTextColor={colors.subtext}
           keyboardType="numeric"
           value={amount}
-          onChangeText={setAmount}
+          onChangeText={(t) => setAmount(sanitizeAmount(t))}
         />
 
         <Text style={styles.label}>Description</Text>

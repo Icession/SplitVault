@@ -18,10 +18,12 @@ import {
   saveTransactions,
   getWallets,
   saveWallets,
+  getCategories,
 } from '../storage/storage';
 import { useTheme } from '../theme/ThemeContext';
 import FadeInView from '../components/FadeInView';
 import PressableScale from '../components/PressableScale';
+import useConfirm from '../components/useConfirm';
 
 const TYPE_FILTERS = ['All', 'Expense', 'Income', 'Transfer'];
 const SORTS = [
@@ -30,6 +32,7 @@ const SORTS = [
   { key: 'amount', label: 'Largest' },
 ];
 
+// Apply (sign +1) or reverse (sign -1) a transaction's effect on wallets.
 const applyEffect = (wallets, tx, sign) => {
   const next = { ...wallets };
   if (tx.type === 'income') {
@@ -47,6 +50,7 @@ const applyEffect = (wallets, tx, sign) => {
 export default function HistoryScreen({ navigation }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const { confirm, dialog } = useConfirm();
 
   const [transactions, setTransactions] = useState([]);
   const [wallets, setWallets] = useState({ savings: 0, expense: 0 });
@@ -60,14 +64,17 @@ export default function HistoryScreen({ navigation }) {
   const [editLabel, setEditLabel] = useState('');
   const [editAmount, setEditAmount] = useState('');
   const [editCategory, setEditCategory] = useState('');
+  const [categories, setCategories] = useState(CATEGORIES);
 
   useFocusEffect(
     useCallback(() => {
       const fetchData = async () => {
         const t = await getTransactions();
         const w = await getWallets();
+        const c = await getCategories();
         setTransactions(t);
         setWallets(w);
+        setCategories(c);
       };
       fetchData();
     }, [])
@@ -89,6 +96,46 @@ export default function HistoryScreen({ navigation }) {
   });
 
   const currentSort = SORTS.find((s) => s.key === sortBy) || SORTS[0];
+
+  // Best available timestamp: prefer createdAt, fall back to the numeric id
+  // (which is Date.now() at creation), so pre-timestamp transactions still group.
+  const txDate = (tx) => {
+    if (tx.createdAt) return new Date(tx.createdAt);
+    const n = Number(tx.id);
+    return n ? new Date(n) : null;
+  };
+
+  const dayKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+
+  const headerLabel = (d) => {
+    const now = new Date();
+    const today = dayKey(now);
+    const yest = new Date(now);
+    yest.setDate(now.getDate() - 1);
+    if (dayKey(d) === today) return 'Today';
+    if (dayKey(d) === dayKey(yest)) return 'Yesterday';
+    const sameYear = d.getFullYear() === now.getFullYear();
+    return d.toLocaleDateString('en-PH', {
+      month: 'long',
+      day: 'numeric',
+      ...(sameYear ? {} : { year: 'numeric' }),
+    });
+  };
+
+  // Group only for date-based sorts; "Largest" stays a flat list.
+  const grouped = sortBy === 'amount'
+    ? null
+    : sorted.reduce((acc, tx) => {
+        const d = txDate(tx);
+        const label = d ? headerLabel(d) : 'Earlier';
+        const last = acc[acc.length - 1];
+        if (last && last.label === label) {
+          last.items.push(tx);
+        } else {
+          acc.push({ label, items: [tx] });
+        }
+        return acc;
+      }, []);
 
   let countLabel = `${sorted.length} transaction${sorted.length !== 1 ? 's' : ''}`;
   if (typeFilter !== 'All' && sorted.length > 0) {
@@ -143,34 +190,30 @@ export default function HistoryScreen({ navigation }) {
     closeTx();
   };
 
-  const handleDelete = () => {
-    Alert.alert(
-      'Delete Transaction',
-      'This removes the transaction and adjusts your wallet balance accordingly.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            const w = applyEffect(wallets, selectedTx, -1);
-            if (w.savings < 0 || w.expense < 0) {
-              Alert.alert(
-                "Can't delete",
-                'Removing this would make one of your wallet balances negative (the funds were likely already used).'
-              );
-              return;
-            }
-            const updatedTx = transactions.filter((t) => t.id !== selectedTx.id);
-            await saveWallets(w);
-            await saveTransactions(updatedTx);
-            setWallets(w);
-            setTransactions(updatedTx);
-            closeTx();
-          },
-        },
-      ]
-    );
+  const handleDelete = async () => {
+    const ok = await confirm({
+      title: 'Delete Transaction',
+      message: 'This removes the transaction and adjusts your wallet balance accordingly.',
+      confirmText: 'Delete',
+      destructive: true,
+      icon: 'trash-outline',
+    });
+    if (!ok) return;
+
+    const w = applyEffect(wallets, selectedTx, -1);
+    if (w.savings < 0 || w.expense < 0) {
+      Alert.alert(
+        "Can't delete",
+        'Removing this would make one of your wallet balances negative (the funds were likely already used).'
+      );
+      return;
+    }
+    const updatedTx = transactions.filter((t) => t.id !== selectedTx.id);
+    await saveWallets(w);
+    await saveTransactions(updatedTx);
+    setWallets(w);
+    setTransactions(updatedTx);
+    closeTx();
   };
 
   const getTxIconName = (type) => {
@@ -196,6 +239,30 @@ export default function HistoryScreen({ navigation }) {
     if (type === 'income') return '+';
     return '';
   };
+
+  const renderRow = (tx, index) => (
+    <PressableScale
+      key={tx.id || index}
+      style={styles.txCard}
+      onPress={() => openTx(tx)}
+    >
+      <View style={[
+        styles.txIconContainer,
+        { backgroundColor: getTxIconColor(tx.type) + '15' }
+      ]}>
+        <Ionicons name={getTxIconName(tx.type)} size={20} color={getTxIconColor(tx.type)} />
+      </View>
+      <View style={styles.txMiddle}>
+        <Text style={styles.txLabel}>{tx.label}</Text>
+        <Text style={styles.txMeta}>
+          {tx.category} · {tx.wallet} · {tx.date}
+        </Text>
+      </View>
+      <Text style={[styles.txAmount, { color: getAmountColor(tx.type) }]}>
+        {getAmountPrefix(tx.type)}{formatPeso(tx.amount)}
+      </Text>
+    </PressableScale>
+  );
 
   return (
     <View style={styles.container}>
@@ -292,30 +359,15 @@ export default function HistoryScreen({ navigation }) {
                   : 'Start by adding an expense or income'}
               </Text>
             </View>
-          ) : (
-            sorted.map((tx, index) => (
-              <PressableScale
-                key={tx.id || index}
-                style={styles.txCard}
-                onPress={() => openTx(tx)}
-              >
-                <View style={[
-                  styles.txIconContainer,
-                  { backgroundColor: getTxIconColor(tx.type) + '15' }
-                ]}>
-                  <Ionicons name={getTxIconName(tx.type)} size={20} color={getTxIconColor(tx.type)} />
-                </View>
-                <View style={styles.txMiddle}>
-                  <Text style={styles.txLabel}>{tx.label}</Text>
-                  <Text style={styles.txMeta}>
-                    {tx.category} · {tx.wallet} · {tx.date}
-                  </Text>
-                </View>
-                <Text style={[styles.txAmount, { color: getAmountColor(tx.type) }]}>
-                  {getAmountPrefix(tx.type)}{formatPeso(tx.amount)}
-                </Text>
-              </PressableScale>
+          ) : grouped ? (
+            grouped.map((group) => (
+              <View key={group.label}>
+                <Text style={styles.dateHeader}>{group.label}</Text>
+                {group.items.map((tx, index) => renderRow(tx, index))}
+              </View>
             ))
+          ) : (
+            sorted.map((tx, index) => renderRow(tx, index))
           )}
         </FadeInView>
       </ScrollView>
@@ -359,7 +411,7 @@ export default function HistoryScreen({ navigation }) {
                   <>
                     <Text style={styles.label}>Category</Text>
                     <View style={styles.categoryGrid}>
-                      {CATEGORIES.map((cat) => (
+                      {categories.map((cat) => (
                         <TouchableOpacity
                           key={cat.label}
                           style={[
@@ -399,6 +451,7 @@ export default function HistoryScreen({ navigation }) {
         </View>
       </Modal>
 
+      {dialog}
     </View>
   );
 }
@@ -453,7 +506,7 @@ const createStyles = (COLORS) => StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    height: 46,
     gap: 8,
   },
   searchInput: {
@@ -468,12 +521,13 @@ const createStyles = (COLORS) => StyleSheet.create({
   sortBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: COLORS.card,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    height: 46,
     gap: 6,
   },
   sortBtnText: {
@@ -483,20 +537,20 @@ const createStyles = (COLORS) => StyleSheet.create({
   },
   sortMenu: {
     position: 'absolute',
-    top: 46,
+    top: 52,
     right: 0,
-    minWidth: 150,
+    minWidth: 160,
     backgroundColor: COLORS.card,
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: COLORS.border,
     paddingVertical: 4,
     zIndex: 30,
-    elevation: 6,
+    elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
   },
   sortItem: {
     flexDirection: 'row',
@@ -566,6 +620,15 @@ const createStyles = (COLORS) => StyleSheet.create({
     fontSize: 13,
     color: COLORS.subtext,
     textAlign: 'center',
+  },
+  dateHeader: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.subtext,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: 8,
+    marginBottom: 8,
   },
   txCard: {
     flexDirection: 'row',

@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import HomeScreen from '../screens/HomeScreen';
 import TransferScreen from '../screens/TransferScreen';
@@ -25,6 +26,7 @@ const getTabIcon = (routeName, color) => {
 
 export default function TabNavigator({ onReset }) {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <Tab.Navigator
@@ -33,8 +35,8 @@ export default function TabNavigator({ onReset }) {
         tabBarStyle: {
           backgroundColor: colors.card,
           borderTopColor: colors.border,
-          height: 65,
-          paddingBottom: 10,
+          height: 65 + insets.bottom,
+          paddingBottom: 10 + insets.bottom,
           paddingTop: 8,
         },
         tabBarActiveTintColor: colors.primary,

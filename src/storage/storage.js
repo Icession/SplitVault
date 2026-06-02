@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { STORAGE_KEYS } from '../constants';
+import { STORAGE_KEYS, CATEGORIES } from '../constants';
 
 //  WALLETS 
 export const getWallets = async () => {
@@ -88,6 +88,25 @@ export const saveProfile = async (profile) => {
   }
 };
 
+// CATEGORIES
+export const getCategories = async () => {
+  try {
+    const data = await AsyncStorage.getItem(STORAGE_KEYS.categories);
+    return data ? JSON.parse(data) : CATEGORIES;
+  } catch (e) {
+    console.error('getCategories error:', e);
+    return CATEGORIES;
+  }
+};
+
+export const saveCategories = async (categories) => {
+  try {
+    await AsyncStorage.setItem(STORAGE_KEYS.categories, JSON.stringify(categories));
+  } catch (e) {
+    console.error('saveCategories error:', e);
+  }
+};
+
 // SETUP FLAG
 export const getIsSetup = async () => {
   try {
@@ -104,5 +123,39 @@ export const setIsSetup = async () => {
     await AsyncStorage.setItem(STORAGE_KEYS.isSetup, 'true');
   } catch (e) {
     console.error('setIsSetup error:', e);
+  }
+};
+
+// BACKUP
+export const exportData = async () => {
+  const [wallets, transactions, goals, profile, categories, isSetup] = await Promise.all([
+    getWallets(),
+    getTransactions(),
+    getGoals(),
+    getProfile(),
+    getCategories(),
+    getIsSetup(),
+  ]);
+  return {
+    app: 'SplitVault',
+    schema: 1,
+    exportedAt: new Date().toISOString(),
+    data: { wallets, transactions, goals, profile, categories, isSetup },
+  };
+};
+
+// Remove every app data key (used by the "Forgot PIN" full reset).
+export const clearAllData = async () => {
+  try {
+    await AsyncStorage.multiRemove([
+      STORAGE_KEYS.wallets,
+      STORAGE_KEYS.transactions,
+      STORAGE_KEYS.goals,
+      STORAGE_KEYS.isSetup,
+      STORAGE_KEYS.profile,
+      STORAGE_KEYS.categories,
+    ]);
+  } catch (e) {
+    console.error('clearAllData error:', e);
   }
 };
