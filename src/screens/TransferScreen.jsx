@@ -15,6 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { formatPeso } from '../constants';
 import { getWallets, saveWallets, addTransaction } from '../storage/storage';
 import { useTheme } from '../theme/ThemeContext';
+import FadeInView from '../components/FadeInView';
+import PressableScale from '../components/PressableScale';
 
 export default function TransferScreen({ navigation }) {
   const { colors } = useTheme();
@@ -133,6 +135,7 @@ export default function TransferScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.inner}>
+          <FadeInView>
           <View style={styles.header}>
             <Text style={styles.title}>Transfer Funds</Text>
             <Text style={styles.subtitle}>Move money between your wallets</Text>
@@ -148,9 +151,9 @@ export default function TransferScreen({ navigation }) {
               </Text>
             </View>
 
-            <TouchableOpacity style={styles.swapBtn} onPress={toggleDirection} activeOpacity={0.6}>
+            <PressableScale style={styles.swapBtn} onPress={toggleDirection}>
               <Ionicons name="swap-horizontal" size={24} color={colors.subtext} />
-            </TouchableOpacity>
+            </PressableScale>
 
             <View style={[styles.walletCard, { borderColor: colors.expense }]}>
               <Ionicons name="card" size={24} color={colors.expense} style={styles.walletIcon} />
@@ -168,7 +171,7 @@ export default function TransferScreen({ navigation }) {
               const optDisabled = option.key === 'savingsToExpense' ? savingsEmpty : expenseEmpty;
               const selected = direction === option.key;
               return (
-                <TouchableOpacity
+                <PressableScale
                   key={option.key}
                   style={[
                     styles.directionBtn,
@@ -185,7 +188,7 @@ export default function TransferScreen({ navigation }) {
                   </View>
                   <Text style={styles.directionSub}>{option.from} to {option.to}</Text>
                   {optDisabled && <Text style={styles.directionNote}>No funds</Text>}
-                </TouchableOpacity>
+                </PressableScale>
               );
             })}
           </View>
@@ -250,13 +253,14 @@ export default function TransferScreen({ navigation }) {
             </View>
           )}
 
-          <TouchableOpacity
+          <PressableScale
             style={[styles.button, { opacity: isValid ? 1 : 0.5 }]}
             onPress={handleTransfer}
             disabled={!isValid}
           >
             <Text style={styles.buttonText}>Confirm Transfer</Text>
-          </TouchableOpacity>
+          </PressableScale>
+          </FadeInView>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

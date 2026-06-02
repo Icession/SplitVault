@@ -20,6 +20,8 @@ import {
   saveWallets,
 } from '../storage/storage';
 import { useTheme } from '../theme/ThemeContext';
+import FadeInView from '../components/FadeInView';
+import PressableScale from '../components/PressableScale';
 
 const TYPE_FILTERS = ['All', 'Expense', 'Income', 'Transfer'];
 const SORTS = [
@@ -28,7 +30,6 @@ const SORTS = [
   { key: 'amount', label: 'Largest' },
 ];
 
-// Apply (sign +1) or reverse (sign -1) a transaction's effect on wallets.
 const applyEffect = (wallets, tx, sign) => {
   const next = { ...wallets };
   if (tx.type === 'income') {
@@ -220,14 +221,14 @@ export default function HistoryScreen({ navigation }) {
           </View>
 
           <View style={styles.sortWrap}>
-            <TouchableOpacity style={styles.sortBtn} onPress={() => setSortOpen((o) => !o)}>
+            <PressableScale style={styles.sortBtn} onPress={() => setSortOpen((o) => !o)}>
               <Text style={styles.sortBtnText}>{currentSort.label}</Text>
               <Ionicons
                 name={sortOpen ? 'chevron-up' : 'chevron-down'}
                 size={14}
                 color={colors.subtext}
               />
-            </TouchableOpacity>
+            </PressableScale>
             {sortOpen && (
               <View style={styles.sortMenu}>
                 {SORTS.map((s) => {
@@ -255,7 +256,7 @@ export default function HistoryScreen({ navigation }) {
 
         <View style={styles.filterSection}>
           {TYPE_FILTERS.map((filter) => (
-            <TouchableOpacity
+            <PressableScale
               key={filter}
               style={[
                 styles.filterPill,
@@ -269,7 +270,7 @@ export default function HistoryScreen({ navigation }) {
               ]}>
                 {filter}
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           ))}
         </View>
 
@@ -280,7 +281,7 @@ export default function HistoryScreen({ navigation }) {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.inner}>
+        <FadeInView style={styles.inner}>
           {sorted.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="receipt-outline" size={40} color={colors.subtext} />
@@ -293,10 +294,9 @@ export default function HistoryScreen({ navigation }) {
             </View>
           ) : (
             sorted.map((tx, index) => (
-              <TouchableOpacity
+              <PressableScale
                 key={tx.id || index}
                 style={styles.txCard}
-                activeOpacity={0.7}
                 onPress={() => openTx(tx)}
               >
                 <View style={[
@@ -314,10 +314,10 @@ export default function HistoryScreen({ navigation }) {
                 <Text style={[styles.txAmount, { color: getAmountColor(tx.type) }]}>
                   {getAmountPrefix(tx.type)}{formatPeso(tx.amount)}
                 </Text>
-              </TouchableOpacity>
+              </PressableScale>
             ))
           )}
-        </View>
+        </FadeInView>
       </ScrollView>
 
       {/* Edit / delete sheet */}
@@ -381,13 +381,13 @@ export default function HistoryScreen({ navigation }) {
                 )}
 
                 <View style={styles.editActions}>
-                  <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete}>
+                  <PressableScale style={styles.deleteBtn} onPress={handleDelete}>
                     <Ionicons name="trash-outline" size={16} color={colors.danger} />
                     <Text style={styles.deleteBtnText}>Delete</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.saveBtn} onPress={handleSaveEdit}>
+                  </PressableScale>
+                  <PressableScale style={styles.saveBtn} onPress={handleSaveEdit}>
                     <Text style={styles.saveBtnText}>Save Changes</Text>
-                  </TouchableOpacity>
+                  </PressableScale>
                 </View>
 
                 <TouchableOpacity style={styles.cancelLink} onPress={closeTx}>

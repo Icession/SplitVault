@@ -15,6 +15,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { formatPeso } from '../constants';
 import { getGoals, saveGoals } from '../storage/storage';
 import { useTheme } from '../theme/ThemeContext';
+import FadeInView from '../components/FadeInView';
+import PressableScale from '../components/PressableScale';
+import ProgressBar from '../components/ProgressBar';
 
 const GOAL_ICONS = [
   { name: 'home', label: 'Home' },
@@ -166,10 +169,10 @@ export default function GoalsScreen({ navigation }) {
           <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Savings Goals</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={openAdd}>
+        <PressableScale style={styles.addBtn} onPress={openAdd}>
           <Ionicons name="add" size={16} color="#fff" />
           <Text style={styles.addBtnText}>Add Goal</Text>
-        </TouchableOpacity>
+        </PressableScale>
       </View>
 
       <ScrollView
@@ -178,7 +181,7 @@ export default function GoalsScreen({ navigation }) {
       >
         <View style={styles.inner}>
           {goals.length === 0 ? (
-            <View style={styles.emptyState}>
+            <FadeInView delay={0} style={styles.emptyState}>
               <View style={styles.emptyIconWrap}>
                 <Ionicons name="flag-outline" size={32} color={colors.goals} />
               </View>
@@ -186,28 +189,28 @@ export default function GoalsScreen({ navigation }) {
               <Text style={styles.emptyText}>
                 Set a target and track your progress toward it.
               </Text>
-              <TouchableOpacity style={styles.emptyCta} onPress={openAdd}>
+              <PressableScale style={styles.emptyCta} onPress={openAdd}>
                 <Ionicons name="add" size={18} color="#fff" />
                 <Text style={styles.emptyCtaText}>Create your first goal</Text>
-              </TouchableOpacity>
-            </View>
+              </PressableScale>
+            </FadeInView>
           ) : (
             <>
-              <View style={styles.summaryCard}>
+              <FadeInView delay={0} style={styles.summaryCard}>
                 <Text style={styles.summaryLabel}>
                   Total saved across {goals.length} goal{goals.length !== 1 ? 's' : ''}
                 </Text>
                 <Text style={styles.summaryAmount}>{formatPeso(totalSaved)}</Text>
                 <Text style={styles.summarySub}>of {formatPeso(totalTarget)} target</Text>
-              </View>
+              </FadeInView>
 
-              {goals.map((goal) => {
+              {goals.map((goal, index) => {
                 const progress = getProgress(goal);
                 const isComplete = progress >= 1;
                 const saved = goal.saved || 0;
 
                 return (
-                  <View key={goal.id} style={[
+                  <FadeInView key={goal.id} delay={80 + index * 70} style={[
                     styles.goalCard,
                     isComplete && { borderColor: colors.primary },
                   ]}>
@@ -241,14 +244,12 @@ export default function GoalsScreen({ navigation }) {
                       <Text style={styles.goalTarget}>of {formatPeso(goal.target)}</Text>
                     </View>
 
-                    <View style={styles.progressTrack}>
-                      <View style={[
-                        styles.progressFill,
-                        {
-                          width: `${Math.round(progress * 100)}%`,
-                          backgroundColor: isComplete ? colors.primary : colors.goals,
-                        },
-                      ]} />
+                    <View style={{ marginBottom: 8 }}>
+                      <ProgressBar
+                        progress={progress}
+                        color={isComplete ? colors.primary : colors.goals}
+                        trackColor={colors.border}
+                      />
                     </View>
 
                     <View style={styles.goalFooter}>
@@ -270,11 +271,11 @@ export default function GoalsScreen({ navigation }) {
                       )}
                     </View>
 
-                    <TouchableOpacity style={styles.addFundsBtn} onPress={() => openFunds(goal)}>
+                    <PressableScale style={styles.addFundsBtn} onPress={() => openFunds(goal)}>
                       <Ionicons name="add" size={16} color={colors.primary} />
                       <Text style={styles.addFundsText}>Add funds</Text>
-                    </TouchableOpacity>
-                  </View>
+                    </PressableScale>
+                  </FadeInView>
                 );
               })}
             </>
@@ -339,10 +340,10 @@ export default function GoalsScreen({ navigation }) {
             </ScrollView>
 
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
+              <PressableScale style={styles.cancelBtn} onPress={() => setModalVisible(false)}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
+              </PressableScale>
+              <PressableScale
                 style={[styles.confirmBtn, { opacity: goalName && goalTarget ? 1 : 0.5 }]}
                 onPress={handleSaveGoal}
                 disabled={!goalName || !goalTarget}
@@ -350,7 +351,7 @@ export default function GoalsScreen({ navigation }) {
                 <Text style={styles.confirmBtnText}>
                   {editingId ? 'Save Changes' : 'Create Goal'}
                 </Text>
-              </TouchableOpacity>
+              </PressableScale>
             </View>
           </View>
         </View>
@@ -381,16 +382,16 @@ export default function GoalsScreen({ navigation }) {
             />
 
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setFundsVisible(false)}>
+              <PressableScale style={styles.cancelBtn} onPress={() => setFundsVisible(false)}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
+              </PressableScale>
+              <PressableScale
                 style={[styles.confirmBtn, { opacity: parseFloat(fundsAmount) > 0 ? 1 : 0.5 }]}
                 onPress={handleAddFunds}
                 disabled={!(parseFloat(fundsAmount) > 0)}
               >
                 <Text style={styles.confirmBtnText}>Add</Text>
-              </TouchableOpacity>
+              </PressableScale>
             </View>
           </View>
         </View>

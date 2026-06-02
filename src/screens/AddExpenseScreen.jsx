@@ -15,6 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { CATEGORIES, formatPeso } from '../constants';
 import { getWallets, saveWallets, addTransaction } from '../storage/storage';
 import { useTheme } from '../theme/ThemeContext';
+import FadeInView from '../components/FadeInView';
+import PressableScale from '../components/PressableScale';
 
 export default function AddExpenseScreen({ navigation, onClose }) {
   const { colors } = useTheme();
@@ -108,6 +110,7 @@ export default function AddExpenseScreen({ navigation, onClose }) {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
+        <FadeInView>
 
         <View style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={handleClose}>
@@ -122,7 +125,7 @@ export default function AddExpenseScreen({ navigation, onClose }) {
         <Text style={styles.label}>Deduct From</Text>
         <View style={styles.walletRow}>
           {['expense', 'savings'].map((wallet) => (
-            <TouchableOpacity
+            <PressableScale
               key={wallet}
               style={[
                 styles.walletBtn,
@@ -149,7 +152,7 @@ export default function AddExpenseScreen({ navigation, onClose }) {
               ]}>
                 {formatPeso(wallets[wallet])}
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           ))}
         </View>
 
@@ -175,7 +178,7 @@ export default function AddExpenseScreen({ navigation, onClose }) {
         <Text style={styles.label}>Category</Text>
         <View style={styles.categoryGrid}>
           {CATEGORIES.map((cat) => (
-            <TouchableOpacity
+            <PressableScale
               key={cat.label}
               style={[
                 styles.categoryBtn,
@@ -192,11 +195,11 @@ export default function AddExpenseScreen({ navigation, onClose }) {
               ]}>
                 {cat.label}
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           ))}
         </View>
 
-        <TouchableOpacity
+        <PressableScale
           style={[
             styles.button,
             { backgroundColor: accent, opacity: amount && selectedCategory && label ? 1 : 0.5 },
@@ -205,8 +208,9 @@ export default function AddExpenseScreen({ navigation, onClose }) {
           disabled={!amount || !selectedCategory || !label}
         >
           <Text style={styles.buttonText}>{actionLabel}</Text>
-        </TouchableOpacity>
+        </PressableScale>
 
+        </FadeInView>
       </ScrollView>
     </KeyboardAvoidingView>
   );

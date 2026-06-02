@@ -15,6 +15,8 @@ import { useNavigation } from '@react-navigation/native';
 import { formatPeso, STORAGE_KEYS } from '../constants';
 import { getWallets, saveTransactions, saveGoals, getProfile, saveProfile } from '../storage/storage';
 import { useTheme } from '../theme/ThemeContext';
+import FadeInView from '../components/FadeInView';
+import PressableScale from '../components/PressableScale';
 
 const CURRENCIES = [
   { code: 'PHP', label: 'Philippine Peso (₱)' },
@@ -138,6 +140,7 @@ export default function SettingsScreen({ onReset }) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+        <FadeInView>
 
         <View style={styles.balanceSummary}>
           <Text style={styles.balanceSummaryLabel}>Total Balance</Text>
@@ -220,10 +223,10 @@ export default function SettingsScreen({ onReset }) {
             </View>
           )}
 
-          <TouchableOpacity style={styles.saveBtn} onPress={handleSaveProfile}>
+          <PressableScale style={styles.saveBtn} onPress={handleSaveProfile}>
             <Ionicons name="save-outline" size={16} color="#fff" />
             <Text style={styles.saveBtnText}>Save Profile</Text>
-          </TouchableOpacity>
+          </PressableScale>
         </View>
 
         <View style={styles.sectionCard}>
@@ -237,9 +240,9 @@ export default function SettingsScreen({ onReset }) {
               <Text style={styles.themeLabel}>Theme</Text>
               <Text style={styles.themeSubtext}>{isDark ? 'Dark mode' : 'Light mode'}</Text>
             </View>
-            <TouchableOpacity style={styles.themeToggleBtn} onPress={toggleTheme}>
+            <PressableScale style={styles.themeToggleBtn} onPress={toggleTheme}>
               <Ionicons name={isDark ? 'sunny' : 'moon'} size={20} color={colors.text} />
-            </TouchableOpacity>
+            </PressableScale>
           </View>
         </View>
 
@@ -269,9 +272,9 @@ export default function SettingsScreen({ onReset }) {
             secureTextEntry
           />
 
-          <TouchableOpacity style={styles.changePasswordBtn} onPress={handleChangePassword}>
+          <PressableScale style={styles.changePasswordBtn} onPress={handleChangePassword}>
             <Text style={styles.changePasswordText}>Change Password</Text>
-          </TouchableOpacity>
+          </PressableScale>
         </View>
 
         <View style={styles.sectionCard}>
@@ -280,7 +283,7 @@ export default function SettingsScreen({ onReset }) {
             <Text style={styles.sectionTitle}>DATA MANAGEMENT</Text>
           </View>
 
-          <TouchableOpacity style={styles.dataRow} onPress={handleClearTransactions}>
+          <PressableScale style={styles.dataRow} onPress={handleClearTransactions}>
             <View style={styles.dataRowLeft}>
               <View style={[styles.dataIconBox, { backgroundColor: colors.primary + '15' }]}>
                 <Ionicons name="receipt-outline" size={16} color={colors.primary} />
@@ -291,11 +294,11 @@ export default function SettingsScreen({ onReset }) {
               </View>
             </View>
             <Ionicons name="chevron-forward" size={16} color={colors.subtext} />
-          </TouchableOpacity>
+          </PressableScale>
 
           <View style={styles.divider} />
 
-          <TouchableOpacity style={styles.dataRow} onPress={handleClearGoals}>
+          <PressableScale style={styles.dataRow} onPress={handleClearGoals}>
             <View style={styles.dataRowLeft}>
               <View style={[styles.dataIconBox, { backgroundColor: colors.primary + '15' }]}>
                 <Ionicons name="flag-outline" size={16} color={colors.primary} />
@@ -306,7 +309,7 @@ export default function SettingsScreen({ onReset }) {
               </View>
             </View>
             <Ionicons name="chevron-forward" size={16} color={colors.subtext} />
-          </TouchableOpacity>
+          </PressableScale>
         </View>
 
         <View style={styles.sectionCard}>
@@ -315,13 +318,14 @@ export default function SettingsScreen({ onReset }) {
             <Text style={styles.sectionTitle}>ACCOUNT</Text>
           </View>
 
-          <TouchableOpacity style={styles.logoutBtn} onPress={handleReset}>
+          <PressableScale style={styles.logoutBtn} onPress={handleReset}>
             <Ionicons name="log-out-outline" size={18} color="#fff" />
             <Text style={styles.logoutBtnText}>Log Out</Text>
-          </TouchableOpacity>
+          </PressableScale>
         </View>
 
         <View style={{ height: 40 }} />
+        </FadeInView>
       </ScrollView>
     </View>
   );

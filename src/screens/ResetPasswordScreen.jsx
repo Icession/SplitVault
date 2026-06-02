@@ -2,12 +2,13 @@ import React, { useMemo } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../theme/ThemeContext';
+import FadeInView from '../components/FadeInView';
+import PressableScale from '../components/PressableScale';
 
 export default function ResetPasswordScreen({ onRequestNewLink }) {
   const { colors } = useTheme();
@@ -15,7 +16,7 @@ export default function ResetPasswordScreen({ onRequestNewLink }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.inner}>
+      <FadeInView style={styles.inner}>
         <View style={styles.iconWrap}>
           <Ionicons name="warning" size={28} color="#fff" />
         </View>
@@ -28,10 +29,10 @@ export default function ResetPasswordScreen({ onRequestNewLink }) {
           </Text>
         </View>
 
-        <TouchableOpacity onPress={onRequestNewLink}>
+        <PressableScale onPress={onRequestNewLink}>
           <Text style={styles.link}>Request a new link</Text>
-        </TouchableOpacity>
-      </View>
+        </PressableScale>
+      </FadeInView>
     </View>
   );
 }

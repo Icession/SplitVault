@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   Modal,
+  Animated,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +17,8 @@ import { getWallets, getTransactions, getProfile } from '../storage/storage';
 import { useTheme } from '../theme/ThemeContext';
 import AddExpenseScreen from './AddExpenseScreen';
 import AddIncomeScreen from './AddIncomeScreen';
+import FadeInView from '../components/FadeInView';
+import PressableScale from '../components/PressableScale';
 
 export default function HomeScreen({ navigation }) {
   const { colors } = useTheme();
@@ -51,6 +54,18 @@ export default function HomeScreen({ navigation }) {
   };
 
   const total = wallets.savings + wallets.expense;
+
+  const [displayTotal, setDisplayTotal] = useState(0);
+  const totalAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const id = totalAnim.addListener(({ value }) => setDisplayTotal(value));
+    Animated.timing(totalAnim, {
+      toValue: total,
+      duration: 700,
+      useNativeDriver: false,
+    }).start();
+    return () => totalAnim.removeListener(id);
+  }, [total]);
 
   const totalIncome = transactions
     .filter(tx => tx.type === 'income')
@@ -112,23 +127,25 @@ export default function HomeScreen({ navigation }) {
           </View>
 
           {/* Total Balance */}
+          <FadeInView delay={60}>
           <View style={styles.balanceCard}>
             <View style={styles.balanceCardInner}>
               <Ionicons name="card-outline" size={18} color="#fff" style={{ marginBottom: 8 }} />
               <Text style={styles.balanceTitleText}>Total Balance</Text>
-              <Text style={styles.balanceAmount}>{formatPeso(total)}</Text>
+              <Text style={styles.balanceAmount}>{formatPeso(displayTotal)}</Text>
             </View>
           </View>
+          </FadeInView>
 
           {/* Accounts (Savings / Expense) */}
+          <FadeInView delay={120}>
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionLabel}>ACCOUNTS</Text>
             </View>
 
-            <TouchableOpacity
+            <PressableScale
               style={[styles.accountCard, { backgroundColor: colors.savingsCardBg }]}
-              activeOpacity={0.7}
               onPress={() => navigation.navigate('History')}
             >
               <View style={[styles.accountIconBox, { backgroundColor: colors.income + '25' }]}>
@@ -141,11 +158,10 @@ export default function HomeScreen({ navigation }) {
               <Text style={[styles.accountAmount, { color: colors.income }]}>
                 {formatPeso(wallets.savings)}
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
 
-            <TouchableOpacity
+            <PressableScale
               style={[styles.accountCard, { backgroundColor: colors.expenseCardBg }]}
-              activeOpacity={0.7}
               onPress={() => navigation.navigate('History')}
             >
               <View style={[styles.accountIconBox, { backgroundColor: colors.danger + '25' }]}>
@@ -158,10 +174,12 @@ export default function HomeScreen({ navigation }) {
               <Text style={[styles.accountAmount, { color: colors.danger }]}>
                 {formatPeso(wallets.expense)}
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           </View>
+          </FadeInView>
 
           {/* Breakdown */}
+          <FadeInView delay={180}>
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionLabel}>BREAKDOWN BY WALLET</Text>
@@ -205,8 +223,10 @@ export default function HomeScreen({ navigation }) {
               </View>
             </View>
           </View>
+          </FadeInView>
 
           {/* Income / Expense overview */}
+          <FadeInView delay={240}>
           <View style={styles.summaryRow}>
             <View style={styles.summaryCard}>
               <View style={[styles.summaryIconBox, { backgroundColor: colors.income + '15' }]}>
@@ -227,8 +247,10 @@ export default function HomeScreen({ navigation }) {
               </Text>
             </View>
           </View>
+          </FadeInView>
 
           {/* Recent Transactions */}
+          <FadeInView delay={300}>
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionLabel}>RECENT TRANSACTIONS</Text>
@@ -244,10 +266,9 @@ export default function HomeScreen({ navigation }) {
               </View>
             ) : (
               recent.map((tx, index) => (
-                <TouchableOpacity
+                <PressableScale
                   key={tx.id || index}
                   style={styles.txRow}
-                  activeOpacity={0.7}
                   onPress={() => navigation.navigate('History')}
                 >
                   <View style={[
@@ -263,10 +284,11 @@ export default function HomeScreen({ navigation }) {
                   <Text style={[styles.txAmount, { color: getTxAmountColor(tx.type) }]}>
                     {getTxPrefix(tx.type)}{formatPeso(tx.amount)}
                   </Text>
-                </TouchableOpacity>
+                </PressableScale>
               ))
             )}
           </View>
+          </FadeInView>
 
           <View style={{ height: 140 }} />
         </View>
@@ -282,28 +304,32 @@ export default function HomeScreen({ navigation }) {
       <View style={styles.fabContainer}>
         {showActions && (
           <>
-            <TouchableOpacity
-              style={[styles.fabAction, { backgroundColor: colors.income }]}
-              onPress={() => { setShowActions(false); setShowIncome(true); }}
-            >
-              <Ionicons name="add" size={16} color="#fff" />
-              <Text style={styles.fabActionText}>Income</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.fabAction, { backgroundColor: colors.danger }]}
-              onPress={() => { setShowActions(false); setShowExpense(true); }}
-            >
-              <Ionicons name="add" size={16} color="#fff" />
-              <Text style={styles.fabActionText}>Expense</Text>
-            </TouchableOpacity>
+            <FadeInView delay={0} duration={180} offset={8} style={{ alignSelf: 'flex-end' }}>
+              <PressableScale
+                style={[styles.fabAction, { backgroundColor: colors.income }]}
+                onPress={() => { setShowActions(false); setShowIncome(true); }}
+              >
+                <Ionicons name="add" size={16} color="#fff" />
+                <Text style={styles.fabActionText}>Income</Text>
+              </PressableScale>
+            </FadeInView>
+            <FadeInView delay={60} duration={180} offset={8} style={{ alignSelf: 'flex-end' }}>
+              <PressableScale
+                style={[styles.fabAction, { backgroundColor: colors.danger }]}
+                onPress={() => { setShowActions(false); setShowExpense(true); }}
+              >
+                <Ionicons name="add" size={16} color="#fff" />
+                <Text style={styles.fabActionText}>Expense</Text>
+              </PressableScale>
+            </FadeInView>
           </>
         )}
-        <TouchableOpacity
+        <PressableScale
           style={styles.fab}
           onPress={() => setShowActions(!showActions)}
         >
           <Ionicons name={showActions ? 'close' : 'add'} size={26} color="#fff" />
-        </TouchableOpacity>
+        </PressableScale>
       </View>
 
       <Modal visible={showExpense} animationType="slide" onRequestClose={() => setShowExpense(false)}>
@@ -556,7 +582,7 @@ const createStyles = (COLORS) => StyleSheet.create({
   },
   fabContainer: {
     position: 'absolute',
-    bottom: 80,
+    bottom: 56,
     right: 20,
     alignItems: 'flex-end',
     gap: 10,

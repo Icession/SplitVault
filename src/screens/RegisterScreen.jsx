@@ -12,6 +12,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../theme/ThemeContext';
+import FadeInView from '../components/FadeInView';
+import PressableScale from '../components/PressableScale';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -24,6 +26,7 @@ export default function RegisterScreen({ onSubmit, onGoogle, onGoToLogin }) {
   const [confirm, setConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [focused, setFocused] = useState(null);
 
   const emailValid = EMAIL_RE.test(email.trim());
   const emailError = email.length > 0 && !emailValid;
@@ -40,6 +43,12 @@ export default function RegisterScreen({ onSubmit, onGoogle, onGoToLogin }) {
 
   const isFormValid = emailValid && passwordValid && passwordsMatch;
 
+  const wrapStyle = (field, error) => [
+    styles.inputWrap,
+    focused === field && styles.inputWrapFocus,
+    error && styles.inputWrapError,
+  ];
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -51,135 +60,148 @@ export default function RegisterScreen({ onSubmit, onGoogle, onGoToLogin }) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.inner}>
-          <View style={styles.iconWrap}>
-            <Ionicons name="person-add" size={26} color="#fff" />
-          </View>
-          <Text style={styles.title}>Create your account</Text>
-          <Text style={styles.subtitle}>Sign up to get started</Text>
 
-          <View style={styles.card}>
-            <TouchableOpacity style={styles.googleBtn} onPress={onGoogle}>
-              <Ionicons name="logo-google" size={18} color="#EA4335" />
-              <Text style={styles.googleText}>Continue with Google</Text>
-            </TouchableOpacity>
-
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>OR</Text>
-              <View style={styles.dividerLine} />
+          <FadeInView delay={0} style={styles.headerBlock}>
+            <View style={styles.brandBadge}>
+              <Ionicons name="lock-closed" size={26} color="#fff" />
             </View>
+            <Text style={styles.brandName}>SplitVault</Text>
+            <Text style={styles.title}>Create your account</Text>
+            <Text style={styles.subtitle}>Start splitting your money in minutes</Text>
+          </FadeInView>
 
-            <View style={styles.field}>
-              <Text style={styles.label}>Email</Text>
-              <View style={[styles.inputWrap, emailError && styles.inputWrapError]}>
-                <Ionicons name="mail-outline" size={18} color={colors.subtext} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="you@example.com"
-                  placeholderTextColor={colors.subtext}
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  textContentType="emailAddress"
-                  autoComplete="email"
-                />
+          <FadeInView delay={120}>
+            <View style={styles.card}>
+              <PressableScale style={styles.googleBtn} onPress={onGoogle}>
+                <Ionicons name="logo-google" size={18} color="#EA4335" />
+                <Text style={styles.googleText}>Continue with Google</Text>
+              </PressableScale>
+
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>OR</Text>
+                <View style={styles.dividerLine} />
               </View>
-              {emailError && (
-                <Text style={styles.errorText}>Enter a valid email address</Text>
-              )}
-            </View>
 
-            <View style={styles.field}>
-              <Text style={styles.label}>Password</Text>
-              <View style={styles.inputWrap}>
-                <Ionicons name="lock-closed-outline" size={18} color={colors.subtext} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="••••••••"
-                  placeholderTextColor={colors.subtext}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  textContentType="newPassword"
-                  autoComplete="password-new"
-                />
-                <TouchableOpacity onPress={() => setShowPassword((s) => !s)}>
-                  <Ionicons
-                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={18}
-                    color={colors.subtext}
+              <View style={styles.field}>
+                <Text style={styles.label}>Email</Text>
+                <View style={wrapStyle('email', emailError)}>
+                  <Ionicons name="mail-outline" size={18} color={focused === 'email' ? colors.primary : colors.subtext} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="you@example.com"
+                    placeholderTextColor={colors.subtext}
+                    value={email}
+                    onChangeText={setEmail}
+                    onFocus={() => setFocused('email')}
+                    onBlur={() => setFocused(null)}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    textContentType="emailAddress"
+                    autoComplete="email"
                   />
-                </TouchableOpacity>
-              </View>
-
-              {password.length > 0 && (
-                <View style={styles.reqsContainer}>
-                  {reqs.map((r) => (
-                    <View key={r.label} style={styles.reqRow}>
-                      <Ionicons
-                        name={r.met ? 'checkmark-circle' : 'ellipse-outline'}
-                        size={14}
-                        color={r.met ? colors.income : colors.subtext}
-                      />
-                      <Text style={[
-                        styles.reqText,
-                        { color: r.met ? colors.income : colors.subtext },
-                      ]}>
-                        {r.label}
-                      </Text>
-                    </View>
-                  ))}
                 </View>
-              )}
-            </View>
-
-            <View style={styles.field}>
-              <Text style={styles.label}>Confirm Password</Text>
-              <View style={[styles.inputWrap, confirmError && styles.inputWrapError]}>
-                <Ionicons name="lock-closed-outline" size={18} color={colors.subtext} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="••••••••"
-                  placeholderTextColor={colors.subtext}
-                  value={confirm}
-                  onChangeText={setConfirm}
-                  secureTextEntry={!showConfirm}
-                  textContentType="newPassword"
-                  autoComplete="password-new"
-                />
-                <TouchableOpacity onPress={() => setShowConfirm((s) => !s)}>
-                  <Ionicons
-                    name={showConfirm ? 'eye-off-outline' : 'eye-outline'}
-                    size={18}
-                    color={colors.subtext}
-                  />
-                </TouchableOpacity>
+                {emailError && (
+                  <Text style={styles.errorText}>Enter a valid email address</Text>
+                )}
               </View>
-              {confirmError && (
-                <Text style={styles.errorText}>Passwords don't match</Text>
-              )}
-              {passwordsMatch && (
-                <Text style={styles.successText}>Passwords match</Text>
-              )}
+
+              <View style={styles.field}>
+                <Text style={styles.label}>Password</Text>
+                <View style={wrapStyle('password', false)}>
+                  <Ionicons name="lock-closed-outline" size={18} color={focused === 'password' ? colors.primary : colors.subtext} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="••••••••"
+                    placeholderTextColor={colors.subtext}
+                    value={password}
+                    onChangeText={setPassword}
+                    onFocus={() => setFocused('password')}
+                    onBlur={() => setFocused(null)}
+                    secureTextEntry={!showPassword}
+                    textContentType="newPassword"
+                    autoComplete="password-new"
+                  />
+                  <TouchableOpacity onPress={() => setShowPassword((s) => !s)} hitSlop={8}>
+                    <Ionicons
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={18}
+                      color={colors.subtext}
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                {password.length > 0 && (
+                  <FadeInView duration={300} offset={6} style={styles.reqsContainer}>
+                    {reqs.map((r) => (
+                      <View key={r.label} style={styles.reqRow}>
+                        <Ionicons
+                          name={r.met ? 'checkmark-circle' : 'ellipse-outline'}
+                          size={14}
+                          color={r.met ? colors.income : colors.subtext}
+                        />
+                        <Text style={[
+                          styles.reqText,
+                          { color: r.met ? colors.income : colors.subtext },
+                        ]}>
+                          {r.label}
+                        </Text>
+                      </View>
+                    ))}
+                  </FadeInView>
+                )}
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>Confirm Password</Text>
+                <View style={wrapStyle('confirm', confirmError)}>
+                  <Ionicons name="lock-closed-outline" size={18} color={focused === 'confirm' ? colors.primary : colors.subtext} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="••••••••"
+                    placeholderTextColor={colors.subtext}
+                    value={confirm}
+                    onChangeText={setConfirm}
+                    onFocus={() => setFocused('confirm')}
+                    onBlur={() => setFocused(null)}
+                    secureTextEntry={!showConfirm}
+                    textContentType="newPassword"
+                    autoComplete="password-new"
+                  />
+                  <TouchableOpacity onPress={() => setShowConfirm((s) => !s)} hitSlop={8}>
+                    <Ionicons
+                      name={showConfirm ? 'eye-off-outline' : 'eye-outline'}
+                      size={18}
+                      color={colors.subtext}
+                    />
+                  </TouchableOpacity>
+                </View>
+                {confirmError && (
+                  <Text style={styles.errorText}>Passwords don't match</Text>
+                )}
+                {passwordsMatch && (
+                  <Text style={styles.successText}>Passwords match</Text>
+                )}
+              </View>
+
+              <PressableScale
+                style={[styles.primaryBtn, { opacity: isFormValid ? 1 : 0.5 }]}
+                onPress={onSubmit}
+                disabled={!isFormValid}
+              >
+                <Text style={styles.primaryBtnText}>Create account</Text>
+              </PressableScale>
             </View>
+          </FadeInView>
 
-            <TouchableOpacity
-              style={[styles.primaryBtn, { opacity: isFormValid ? 1 : 0.5 }]}
-              onPress={onSubmit}
-              disabled={!isFormValid}
-            >
-              <Text style={styles.primaryBtnText}>Create account</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.footer}>
+          <FadeInView delay={240} style={styles.footer}>
             <Text style={styles.footerText}>Already have an account? </Text>
-            <TouchableOpacity onPress={onGoToLogin}>
+            <TouchableOpacity onPress={onGoToLogin} hitSlop={8}>
               <Text style={styles.footerLink}>Log in</Text>
             </TouchableOpacity>
-          </View>
+          </FadeInView>
+
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -201,19 +223,35 @@ const createStyles = (COLORS) => StyleSheet.create({
     maxWidth: 400,
     alignSelf: 'center',
   },
-  iconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
+  headerBlock: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  brandBadge: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    alignSelf: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  brandName: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: COLORS.primary,
+    marginBottom: 10,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: 26,
+    fontWeight: '800',
     color: COLORS.text,
     textAlign: 'center',
   },
@@ -221,15 +259,19 @@ const createStyles = (COLORS) => StyleSheet.create({
     fontSize: 14,
     color: COLORS.subtext,
     textAlign: 'center',
-    marginTop: 4,
-    marginBottom: 24,
+    marginTop: 6,
   },
   card: {
     backgroundColor: COLORS.card,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 20,
+    padding: 22,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    elevation: 4,
   },
   googleBtn: {
     flexDirection: 'row',
@@ -239,9 +281,9 @@ const createStyles = (COLORS) => StyleSheet.create({
     backgroundColor: COLORS.background,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 10,
-    paddingVertical: 12,
-    marginBottom: 16,
+    borderRadius: 12,
+    paddingVertical: 13,
+    marginBottom: 18,
   },
   googleText: {
     fontSize: 14,
@@ -251,7 +293,7 @@ const createStyles = (COLORS) => StyleSheet.create({
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 18,
   },
   dividerLine: {
     flex: 1,
@@ -260,29 +302,33 @@ const createStyles = (COLORS) => StyleSheet.create({
   },
   dividerText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     color: COLORS.subtext,
     marginHorizontal: 10,
+    letterSpacing: 1,
   },
   field: {
-    marginBottom: 14,
+    marginBottom: 16,
   },
   label: {
     fontSize: 13,
     fontWeight: '600',
     color: COLORS.text,
-    marginBottom: 6,
+    marginBottom: 7,
   },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     backgroundColor: COLORS.background,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: COLORS.border,
-    borderRadius: 10,
+    borderRadius: 12,
     paddingHorizontal: 12,
-    height: 48,
+    height: 50,
+  },
+  inputWrapFocus: {
+    borderColor: COLORS.primary,
   },
   inputWrapError: {
     borderColor: COLORS.danger,
@@ -300,12 +346,12 @@ const createStyles = (COLORS) => StyleSheet.create({
   successText: {
     fontSize: 12,
     fontWeight: '600',
-    color: COLORS.primary,
+    color: COLORS.income,
     marginTop: 6,
   },
   reqsContainer: {
-    marginTop: 10,
-    gap: 6,
+    marginTop: 12,
+    gap: 7,
   },
   reqRow: {
     flexDirection: 'row',
@@ -317,10 +363,10 @@ const createStyles = (COLORS) => StyleSheet.create({
   },
   primaryBtn: {
     backgroundColor: COLORS.primary,
-    borderRadius: 10,
-    paddingVertical: 14,
+    borderRadius: 12,
+    paddingVertical: 15,
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 6,
   },
   primaryBtnText: {
     fontSize: 15,
@@ -330,7 +376,7 @@ const createStyles = (COLORS) => StyleSheet.create({
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 20,
+    marginTop: 22,
   },
   footerText: {
     fontSize: 13,

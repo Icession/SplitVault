@@ -15,6 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { formatPeso } from '../constants';
 import { getWallets, saveWallets, addTransaction } from '../storage/storage';
 import { useTheme } from '../theme/ThemeContext';
+import FadeInView from '../components/FadeInView';
+import PressableScale from '../components/PressableScale';
 
 export default function AddIncomeScreen({ navigation, onClose }) {
   const { colors } = useTheme();
@@ -90,6 +92,7 @@ export default function AddIncomeScreen({ navigation, onClose }) {
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
       >
+        <FadeInView>
 
         <View style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={handleClose}>
@@ -134,7 +137,7 @@ export default function AddIncomeScreen({ navigation, onClose }) {
           </Text>
         </View>
 
-        <TouchableOpacity
+        <PressableScale
           style={[
             styles.button,
             { opacity: amount && label ? 1 : 0.5 },
@@ -143,8 +146,9 @@ export default function AddIncomeScreen({ navigation, onClose }) {
           disabled={!amount || !label}
         >
           <Text style={styles.buttonText}>Add Income</Text>
-        </TouchableOpacity>
+        </PressableScale>
 
+        </FadeInView>
       </ScrollView>
     </KeyboardAvoidingView>
   );
