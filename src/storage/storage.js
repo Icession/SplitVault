@@ -1,130 +1,110 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { STORAGE_KEYS, CATEGORIES } from '../constants';
+import {
+  doc,
+  getDoc,
+  setDoc,
+  deleteDoc,
+} from 'firebase/firestore';
 
-//  WALLETS 
+import { db, auth } from '../firebase/firebaseConfig';
+import { CATEGORIES } from '../constants';
+
+// Every user's data lives under users/{uid}/app/{key}, so accounts never
+// see each other's data. Each "key" below mirrors the old storage keys.
+const uid = () => (auth.currentUser ? auth.currentUser.uid : null);
+const ref = (u, key) => doc(db, 'users', u, 'app', key);
+
+const readDoc = async (key, fallback) => {
+  try {
+    const u = uid();
+    if (!u) return fallback;
+    const snap = await getDoc(ref(u, key));
+    return snap.exists() ? snap.data() : fallback;
+  } catch (e) {
+    console.error(`read ${key} error:`, e);
+    return fallback;
+  }
+};
+
+const writeDoc = async (key, data) => {
+  try {
+    const u = uid();
+    if (!u) return;
+    await setDoc(ref(u, key), data);
+  } catch (e) {
+    console.error(`write ${key} error:`, e);
+  }
+};
+
+// WALLETS
 export const getWallets = async () => {
-  try {
-    const data = await AsyncStorage.getItem(STORAGE_KEYS.wallets);
-    return data ? JSON.parse(data) : { savings: 0, expense: 0 };
-  } catch (e) {
-    console.error('getWallets error:', e);
-    return { savings: 0, expense: 0 };
-  }
+  const d = await readDoc('wallets', { savings: 0, expense: 0 });
+  return { savings: d.savings || 0, expense: d.expense || 0 };
 };
 
-export const saveWallets = async (wallets) => {
-  try {
-    await AsyncStorage.setItem(STORAGE_KEYS.wallets, JSON.stringify(wallets));
-  } catch (e) {
-    console.error('saveWallets error:', e);
-  }
-};
+export const saveWallets = async (wallets) =>
+  writeDoc('wallets', {
+    savings: wallets.savings || 0,
+    expense: wallets.expense || 0,
+  });
 
-// TRANSACTIONS
+// TRANSACTIONS (stored as one document holding the array, mirroring the old shape)
 export const getTransactions = async () => {
-  try {
-    const data = await AsyncStorage.getItem(STORAGE_KEYS.transactions);
-    return data ? JSON.parse(data) : [];
-  } catch (e) {
-    console.error('getTransactions error:', e);
-    return [];
-  }
+  const d = await readDoc('transactions', { list: [] });
+  return Array.isArray(d.list) ? d.list : [];
 };
 
-export const saveTransactions = async (transactions) => {
-  try {
-    await AsyncStorage.setItem(STORAGE_KEYS.transactions, JSON.stringify(transactions));
-  } catch (e) {
-    console.error('saveTransactions error:', e);
-  }
-};
+export const saveTransactions = async (transactions) =>
+  writeDoc('transactions', { list: transactions });
 
 export const addTransaction = async (entry) => {
-  try {
-    const existing = await getTransactions();
-    const updated = [entry, ...existing];
-    await saveTransactions(updated);
-    return updated;
-  } catch (e) {
-    console.error('addTransaction error:', e);
-  }
+  const existing = await getTransactions();
+  const updated = [entry, ...existing]; // newest first
+  await saveTransactions(updated);
+  return updated;
 };
 
 // GOALS
 export const getGoals = async () => {
-  try {
-    const data = await AsyncStorage.getItem(STORAGE_KEYS.goals);
-    return data ? JSON.parse(data) : [];
-  } catch (e) {
-    console.error('getGoals error:', e);
-    return [];
-  }
+  const d = await readDoc('goals', { list: [] });
+  return Array.isArray(d.list) ? d.list : [];
 };
 
-export const saveGoals = async (goals) => {
-  try {
-    await AsyncStorage.setItem(STORAGE_KEYS.goals, JSON.stringify(goals));
-  } catch (e) {
-    console.error('saveGoals error:', e);
-  }
-};
+export const saveGoals = async (goals) => writeDoc('goals', { list: goals });
 
 // PROFILE
 export const getProfile = async () => {
-  try {
-    const data = await AsyncStorage.getItem(STORAGE_KEYS.profile);
-    return data ? JSON.parse(data) : { fullName: '', email: '', currency: 'PHP' };
-  } catch (e) {
-    console.error('getProfile error:', e);
-    return { fullName: '', email: '', currency: 'PHP' };
-  }
+  const d = await readDoc('profile', { fullName: '', email: '', currency: 'PHP' });
+  return {
+    fullName: d.fullName || '',
+    email: d.email || '',
+    currency: d.currency || 'PHP',
+  };
 };
 
-export const saveProfile = async (profile) => {
-  try {
-    await AsyncStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(profile));
-  } catch (e) {
-    console.error('saveProfile error:', e);
-  }
-};
+export const saveProfile = async (profile) =>
+  writeDoc('profile', {
+    fullName: profile.fullName || '',
+    email: profile.email || '',
+    currency: profile.currency || 'PHP',
+  });
 
 // CATEGORIES
 export const getCategories = async () => {
-  try {
-    const data = await AsyncStorage.getItem(STORAGE_KEYS.categories);
-    return data ? JSON.parse(data) : CATEGORIES;
-  } catch (e) {
-    console.error('getCategories error:', e);
-    return CATEGORIES;
-  }
+  const d = await readDoc('categories', null);
+  if (d && Array.isArray(d.list)) return d.list;
+  return CATEGORIES;
 };
 
-export const saveCategories = async (categories) => {
-  try {
-    await AsyncStorage.setItem(STORAGE_KEYS.categories, JSON.stringify(categories));
-  } catch (e) {
-    console.error('saveCategories error:', e);
-  }
-};
+export const saveCategories = async (categories) =>
+  writeDoc('categories', { list: categories });
 
 // SETUP FLAG
 export const getIsSetup = async () => {
-  try {
-    const data = await AsyncStorage.getItem(STORAGE_KEYS.isSetup);
-    return data === 'true';
-  } catch (e) {
-    console.error('getIsSetup error:', e);
-    return false;
-  }
+  const d = await readDoc('meta', { isSetup: false });
+  return d.isSetup === true;
 };
 
-export const setIsSetup = async () => {
-  try {
-    await AsyncStorage.setItem(STORAGE_KEYS.isSetup, 'true');
-  } catch (e) {
-    console.error('setIsSetup error:', e);
-  }
-};
+export const setIsSetup = async () => writeDoc('meta', { isSetup: true });
 
 // BACKUP
 export const exportData = async () => {
@@ -144,17 +124,13 @@ export const exportData = async () => {
   };
 };
 
-// Remove every app data key (used by the "Forgot PIN" full reset).
+// Remove all of the signed-in user's data (used by the full reset).
 export const clearAllData = async () => {
   try {
-    await AsyncStorage.multiRemove([
-      STORAGE_KEYS.wallets,
-      STORAGE_KEYS.transactions,
-      STORAGE_KEYS.goals,
-      STORAGE_KEYS.isSetup,
-      STORAGE_KEYS.profile,
-      STORAGE_KEYS.categories,
-    ]);
+    const u = uid();
+    if (!u) return;
+    const keys = ['wallets', 'transactions', 'goals', 'profile', 'categories', 'meta'];
+    await Promise.all(keys.map((k) => deleteDoc(ref(u, k))));
   } catch (e) {
     console.error('clearAllData error:', e);
   }
