@@ -32,11 +32,11 @@ const SORTS = [
   { key: 'amount', label: 'Largest' },
 ];
 
-// Apply (sign +1) or reverse (sign -1) a transaction's effect on wallets.
 const applyEffect = (wallets, tx, sign) => {
   const next = { ...wallets };
   if (tx.type === 'income') {
-    next.savings += sign * tx.amount;
+    const w = tx.wallet || 'savings';
+    next[w] += sign * tx.amount;
   } else if (tx.type === 'expense') {
     next[tx.wallet] -= sign * tx.amount;
   } else if (tx.type === 'transfer') {

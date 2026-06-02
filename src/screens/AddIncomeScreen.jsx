@@ -17,13 +17,21 @@ import { getWallets, saveWallets, addTransaction } from '../storage/storage';
 import { useTheme } from '../theme/ThemeContext';
 import FadeInView from '../components/FadeInView';
 import PressableScale from '../components/PressableScale';
+import { useToast } from '../components/ToastProvider';
+
+const WALLET_OPTIONS = [
+  { key: 'savings', label: 'Savings', icon: 'wallet' },
+  { key: 'expense', label: 'Expense', icon: 'card' },
+];
 
 export default function AddIncomeScreen({ navigation, onClose }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+  const showToast = useToast();
 
   const [amount, setAmount] = useState('');
   const [label, setLabel] = useState('');
+  const [destination, setDestination] = useState('savings'); // 'savings' | 'expense'
   const [wallets, setWallets] = useState({ savings: 0, expense: 0 });
 
   useEffect(() => {
@@ -33,6 +41,10 @@ export default function AddIncomeScreen({ navigation, onClose }) {
     };
     loadWallets();
   }, []);
+
+  const accent = destination === 'savings' ? colors.savings : colors.expense;
+  const destLabel = destination === 'savings' ? 'Savings' : 'Expense';
+  const currentBalance = wallets[destination] || 0;
 
   const handleClose = () => {
     if (onClose) onClose();
@@ -53,14 +65,14 @@ export default function AddIncomeScreen({ navigation, onClose }) {
 
     const updatedWallets = {
       ...wallets,
-      savings: wallets.savings + parsedAmount,
+      [destination]: (wallets[destination] || 0) + parsedAmount,
     };
 
     const transaction = {
       id: Date.now().toString(),
       createdAt: new Date().toISOString(),
       type: 'income',
-      wallet: 'savings',
+      wallet: destination,
       amount: parsedAmount,
       label: label.trim(),
       category: 'Income',
@@ -76,11 +88,10 @@ export default function AddIncomeScreen({ navigation, onClose }) {
 
     setAmount('');
     setLabel('');
-    Alert.alert(
-      'Income Added',
-      `${formatPeso(parsedAmount)} added to your Savings wallet.`
-    );
     handleClose();
+    showToast(`${formatPeso(parsedAmount)} added to ${destLabel}`, {
+      color: accent,
+    });
   };
 
   return (
@@ -94,59 +105,86 @@ export default function AddIncomeScreen({ navigation, onClose }) {
       >
         <FadeInView>
 
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backBtn} onPress={handleClose}>
-            <Ionicons name="arrow-back" size={22} color={colors.text} />
-          </TouchableOpacity>
-          <View>
-            <Text style={styles.title}>Add Income</Text>
-            <Text style={styles.subtitle}>Funds are added to your Savings wallet</Text>
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backBtn} onPress={handleClose}>
+              <Ionicons name="arrow-back" size={22} color={colors.text} />
+            </TouchableOpacity>
+            <View>
+              <Text style={styles.title}>Add Income</Text>
+              <Text style={styles.subtitle}>Choose which wallet receives it</Text>
+            </View>
           </View>
-        </View>
 
-        <View style={styles.balanceCard}>
-          <Text style={styles.balanceLabel}>Savings Wallet</Text>
-          <Text style={styles.balanceAmount}>{formatPeso(wallets.savings)}</Text>
-          <Text style={styles.balanceHint}>
-            After adding: {formatPeso(wallets.savings + (parseFloat(amount) || 0))}
-          </Text>
-        </View>
+          {/* Destination wallet picker */}
+          <Text style={styles.label}>Add to</Text>
+          <View style={styles.walletRow}>
+            {WALLET_OPTIONS.map((opt) => {
+              const active = destination === opt.key;
+              const optColor = opt.key === 'savings' ? colors.savings : colors.expense;
+              return (
+                <PressableScale
+                  key={opt.key}
+                  style={[
+                    styles.walletCard,
+                    active && { borderColor: optColor, backgroundColor: optColor + '14' },
+                  ]}
+                  onPress={() => setDestination(opt.key)}
+                >
+                  <Ionicons
+                    name={opt.icon}
+                    size={20}
+                    color={active ? optColor : colors.subtext}
+                  />
+                  <Text style={[styles.walletLabel, active && { color: optColor }]}>
+                    {opt.label}
+                  </Text>
+                  {active && (
+                    <Ionicons name="checkmark-circle" size={16} color={optColor} />
+                  )}
+                </PressableScale>
+              );
+            })}
+          </View>
 
-        <Text style={styles.label}>Amount (₱)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. 5000"
-          placeholderTextColor={colors.subtext}
-          keyboardType="numeric"
-          value={amount}
-          onChangeText={(t) => setAmount(sanitizeAmount(t))}
-        />
+          <View style={[styles.balanceCard, { borderColor: accent }]}>
+            <Text style={styles.balanceLabel}>{destLabel} Wallet</Text>
+            <Text style={[styles.balanceAmount, { color: accent }]}>
+              {formatPeso(currentBalance)}
+            </Text>
+            <Text style={styles.balanceHint}>
+              After adding: {formatPeso(currentBalance + (parseFloat(amount) || 0))}
+            </Text>
+          </View>
 
-        <Text style={styles.label}>Description</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g. Salary, Freelance, Allowance"
-          placeholderTextColor={colors.subtext}
-          value={label}
-          onChangeText={setLabel}
-        />
+          <Text style={styles.label}>Amount (₱)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g. 5000"
+            placeholderTextColor={colors.subtext}
+            keyboardType="numeric"
+            value={amount}
+            onChangeText={(t) => setAmount(sanitizeAmount(t))}
+          />
 
-        <View style={styles.infoBox}>
-          <Text style={styles.infoText}>
-            Transfer funds to your Expense wallet when you're ready to spend.
-          </Text>
-        </View>
+          <Text style={styles.label}>Description</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g. Salary, Freelance, Allowance"
+            placeholderTextColor={colors.subtext}
+            value={label}
+            onChangeText={setLabel}
+          />
 
-        <PressableScale
-          style={[
-            styles.button,
-            { opacity: amount && label ? 1 : 0.5 },
-          ]}
-          onPress={handleSubmit}
-          disabled={!amount || !label}
-        >
-          <Text style={styles.buttonText}>Add Income</Text>
-        </PressableScale>
+          <PressableScale
+            style={[
+              styles.button,
+              { backgroundColor: accent, opacity: amount && label ? 1 : 0.5 },
+            ]}
+            onPress={handleSubmit}
+            disabled={!amount || !label}
+          >
+            <Text style={styles.buttonText}>Add to {destLabel}</Text>
+          </PressableScale>
 
         </FadeInView>
       </ScrollView>
@@ -190,11 +228,32 @@ const createStyles = (COLORS) => StyleSheet.create({
     color: COLORS.subtext,
     marginTop: 2,
   },
+  walletRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  walletCard: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: COLORS.card,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    paddingVertical: 16,
+  },
+  walletLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.subtext,
+  },
   balanceCard: {
     backgroundColor: COLORS.card,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: COLORS.savings,
     padding: 20,
     alignItems: 'center',
     marginBottom: 28,
@@ -207,7 +266,6 @@ const createStyles = (COLORS) => StyleSheet.create({
   balanceAmount: {
     fontSize: 28,
     fontWeight: '700',
-    color: COLORS.savings,
     marginBottom: 6,
   },
   balanceHint: {
@@ -230,24 +288,11 @@ const createStyles = (COLORS) => StyleSheet.create({
     color: COLORS.text,
     marginBottom: 20,
   },
-  infoBox: {
-    backgroundColor: COLORS.card,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 14,
-    marginBottom: 28,
-  },
-  infoText: {
-    fontSize: 13,
-    color: COLORS.subtext,
-    lineHeight: 18,
-  },
   button: {
-    backgroundColor: COLORS.savings,
     borderRadius: 14,
     padding: 16,
     alignItems: 'center',
+    marginTop: 4,
   },
   buttonText: {
     fontSize: 16,

@@ -17,6 +17,7 @@ import { getIsSetup, clearAllData } from './src/storage/storage';
 import { isLockEnabled, clearLock } from './src/storage/lock';
 import { subscribeToAuth, logOut } from './src/firebase/auth';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
+import { ToastProvider } from './src/components/ToastProvider';
 import TabNavigator from './src/navigation/TabNavigator';
 import SetupScreen from './src/screens/SetupScreen';
 import AuthFlow from './src/navigation/AuthFlow';
@@ -35,7 +36,6 @@ function AppContent() {
   const [lockChecked, setLockChecked] = useState(false);
   const [locked, setLocked] = useState(false);
 
-  // Listen to real Firebase auth state (keeps users signed in across restarts).
   useEffect(() => {
     const unsubscribe = subscribeToAuth((u) => {
       setUser(u);
@@ -44,7 +44,6 @@ function AppContent() {
     return unsubscribe;
   }, []);
 
-  // Check the app lock once on launch.
   useEffect(() => {
     let active = true;
     isLockEnabled().then((on) => {
@@ -58,7 +57,6 @@ function AppContent() {
     };
   }, []);
 
-  // Whenever a user is signed in, check whether they've completed setup.
   useEffect(() => {
     if (!user) return;
     let active = true;
@@ -78,7 +76,6 @@ function AppContent() {
     ? { ...DarkTheme, colors: { ...DarkTheme.colors, background: colors.background } }
     : { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: colors.background } };
 
-  // Full reset: wipe local data, clear the lock, and sign out.
   const handleFullReset = async () => {
     await clearAllData();
     await clearLock();
@@ -95,12 +92,10 @@ function AppContent() {
     </SafeAreaView>
   );
 
-  // Wait until we know both the lock state and the auth state.
   if (!lockChecked || !authReady) {
     return <Spinner />;
   }
 
-  // App lock gate (device-level), shown before anything else.
   if (locked) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -110,7 +105,6 @@ function AppContent() {
     );
   }
 
-  // Not signed in → show the auth flow.
   if (!user) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -142,7 +136,9 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <AppContent />
+        <ToastProvider>
+          <AppContent />
+        </ToastProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );
