@@ -1,4 +1,5 @@
 import React from 'react';
+import { View, Text, Pressable, Platform, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,29 +27,61 @@ const getTabIcon = (routeName, color) => {
   }
 };
 
+// Custom tab bar so we control the icon + label layout directly. This avoids
+// React Navigation's built-in bar overriding bottom spacing on web (which was
+// clipping the labels), while still looking the same on the phone.
+function CustomTabBar({ state, navigation, colors, insets }) {
+  const bottomPad = 10 + (Platform.OS === 'web' ? 12 : insets.bottom);
+
+  return (
+    <View
+      style={[
+        styles.bar,
+        {
+          backgroundColor: colors.card,
+          borderTopColor: colors.border,
+          paddingBottom: bottomPad,
+        },
+      ]}
+    >
+      {state.routes.map((route, index) => {
+        const focused = state.index === index;
+        const color = focused ? colors.primary : colors.subtext;
+
+        const onPress = () => {
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+          });
+          if (!focused && !event.defaultPrevented) {
+            navigation.navigate(route.name);
+          }
+        };
+
+        return (
+          <Pressable key={route.key} onPress={onPress} style={styles.tab}>
+            {getTabIcon(route.name, color)}
+            <Text style={[styles.label, { color }]} numberOfLines={1}>
+              {route.name}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 export default function TabNavigator({ onReset }) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: colors.card,
-          borderTopColor: colors.border,
-          height: 65 + insets.bottom,
-          paddingBottom: 10 + insets.bottom,
-          paddingTop: 8,
-        },
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.subtext,
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-        },
-        tabBarIcon: ({ color }) => getTabIcon(route.name, color),
-      })}
+      screenOptions={{ headerShown: false }}
+      tabBar={(props) => (
+        <CustomTabBar {...props} colors={colors} insets={insets} />
+      )}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Transfer" component={TransferScreen} />
@@ -61,3 +94,22 @@ export default function TabNavigator({ onReset }) {
     </Tab.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  bar: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    paddingTop: 8,
+  },
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 2,
+  },
+  label: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+});

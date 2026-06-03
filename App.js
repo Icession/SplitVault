@@ -143,7 +143,21 @@ function AppContent() {
 }
 
 export default function App() {
-  return (
+  // On web, reset default page margins and lock the document to the viewport
+  // height so nothing overflows and clips the bottom tab bar.
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      document.documentElement.style.height = '100%';
+      document.body.style.height = '100%';
+      document.body.style.margin = '0';
+      const root = document.getElementById('root');
+      if (root) {
+        root.style.height = '100%';
+      }
+    }
+  }, []);
+
+  const content = (
     <SafeAreaProvider>
       <ThemeProvider>
         <ToastProvider>
@@ -152,7 +166,38 @@ export default function App() {
       </ThemeProvider>
     </SafeAreaProvider>
   );
+
+  // On web (the live demo), center the app in a phone-width column so it looks
+  // like a phone instead of stretching across a wide desktop browser.
+  // Native (the real app / APK) is unaffected.
+  if (Platform.OS === 'web') {
+    return (
+      <View style={webStyles.page}>
+        <View style={webStyles.phone}>{content}</View>
+      </View>
+    );
+  }
+
+  return content;
 }
+
+const webStyles = StyleSheet.create({
+  page: {
+    height: '100vh',
+    width: '100%',
+    backgroundColor: '#000',
+    alignItems: 'center',
+  },
+  phone: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 430,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    overflow: 'hidden',
+  },
+});
 
 const createStyles = (COLORS) => StyleSheet.create({
   loadingContainer: {

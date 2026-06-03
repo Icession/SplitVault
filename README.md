@@ -2,7 +2,29 @@
 
 **Split your money smart.** SplitVault is a personal finance app for Android that helps you separate your money into two purposeful wallets — **Savings** and **Expense** — so you always know what's safe to spend and what's set aside. Built with React Native and a local-first architecture backed by cloud sync.
 
-> Platform: Android (React Native + Expo)
+> Currency: Philippine Peso (₱) · Platform: Android (React Native + Expo)
+
+---
+
+## 🔗 Try It
+
+| | |
+|---|---|
+| **🌐 Live Demo** | **[splitvault.expo.app](https://splitvault.expo.app)** — runs in your browser, no install needed |
+| **📥 Download (Android)** | **[SplitVault.apk](https://github.com/Icession/SplitVault/releases/download/v1.0.0/SplitVault.apk)** — install on any Android phone |
+
+### Demo account
+
+Sign in to the live demo with:
+
+- **Email:** `demo@splitvault.app`
+- **Password:** `Demo1234`
+
+Or create your own account — your data is private to you.
+
+> The live demo runs the mobile app in the browser via React Native Web, presented in a phone-sized frame. The biometric app-lock isn't available on web (browsers have no fingerprint sensor) — install the APK for the full native experience, including offline use and secure unlock.
+>
+> To install the APK, open the link on an Android phone and allow installation from unknown sources when prompted (standard for apps outside the Play Store).
 
 ---
 
@@ -15,7 +37,6 @@
 | Sign In | History | Transfer |
 |---------|---------|----------|
 | ![Sign In](docs/screenshots/auth.jpg) | ![History](docs/screenshots/history.jpg) | ![Transfer](docs/screenshots/transfer.jpg) |
-
 
 ---
 
@@ -41,6 +62,7 @@
 - **Cloud backup & restore** — data syncs to Cloud Firestore, scoped per user, enabling cross-device restore.
 - **Per-user data isolation** — Firestore security rules ensure each account can only ever read or write its own data.
 - **Persisted authentication** — Firebase Auth keeps users signed in between sessions.
+- **One codebase, two targets** — the same React Native code ships as a native Android app and, via React Native Web, as the browser demo.
 
 ---
 
@@ -53,6 +75,7 @@
 - **Secure storage:** `expo-secure-store` (PIN) + `expo-local-authentication` (biometrics)
 - **Charts:** `react-native-svg`
 - **UX:** `react-native-keyboard-aware-scroll-view`, custom themed toasts and dialogs
+- **Builds & hosting:** EAS Build (Android APK) + EAS Hosting (web demo)
 
 ---
 
@@ -119,7 +142,7 @@ This project uses Firebase for authentication and cloud sync. The real config fi
 
 ```
 SplitVault/
-├── App.js                  # Root: auth gate, app-lock gate, navigation
+├── App.js                  # Root: auth gate, app-lock gate, navigation, web frame
 ├── src/
 │   ├── components/         # Reusable UI (dialogs, toasts, fields, charts helpers)
 │   ├── constants/          # Categories, currency formatting, shared helpers
