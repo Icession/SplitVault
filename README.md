@@ -1,72 +1,147 @@
-# SplitVault 💰
+# SplitVault
 
-A personal finance mobile app built with React Native and Expo, designed to help users manage their money by splitting funds between a Savings wallet and an Expense wallet.
+**Split your money smart.** SplitVault is a personal finance app for Android that helps you separate your money into two purposeful wallets — **Savings** and **Expense** — so you always know what's safe to spend and what's set aside. Built with React Native and a local-first architecture backed by cloud sync.
+
+> Currency: Philippine Peso (₱) · Platform: Android (React Native + Expo)
 
 ---
 
-## Overview
+## Screenshots
 
-SplitVault is built around a simple but powerful concept — your money lives in two separate wallets:
+| Home | Insights | Add Expense |
+|------|----------|-------------|
+| ![Home](docs/screenshots/home.jpg) | ![Insights](docs/screenshots/insights.jpg) | ![Add Expense](docs/screenshots/add-expense.jpg) |
 
-- 🐷 **Savings** — where all income lands first. This is your protected fund.
-- 💳 **Expense** — where you intentionally move money when you're ready to spend.
+| Sign In | History | Transfer |
+|---------|---------|----------|
+| ![Sign In](docs/screenshots/auth.jpg) | ![History](docs/screenshots/history.jpg) | ![Transfer](docs/screenshots/transfer.jpg) |
 
-This structure encourages mindful spending by forcing users to be deliberate about how much they allocate for expenses, rather than spending from a single pool.
 
 ---
 
 ## Features
 
-- **Dual Wallet System** — Separate Savings and Expense wallets with real-time balances
-- **Add Income** — All income goes directly to Savings
-- **Add Expense** — Deduct from either wallet with category tagging
-- **Transfer Funds** — Move money between wallets in either direction with live preview
-- **Transaction History** — Full history with filtering by type and wallet
-- **Savings Goals** — Create goals with target amounts and track progress against your Savings balance
-- **Low Balance Warnings** — Visual alerts when your Expense wallet is empty or running low
-- **Persistent Storage** — All data is stored locally on-device via AsyncStorage
-- **Settings** — Reset app, clear transaction history, or clear goals
+- **Two-wallet system** — keep Savings and Expense balances separate, and transfer between them with a clear, directional flow.
+- **Income, expenses, and transfers** — add income to either wallet, record expenses by category, and move money between wallets.
+- **Savings goals** — set targets, add funds, and track progress visually.
+- **Transaction history** — search, filter by type, sort, and edit or delete entries, with balances that always recalculate correctly.
+- **Spending insights** — a category breakdown donut chart with This Month / Last Month / All Time ranges.
+- **App lock** — optional PIN with biometric (fingerprint/face) unlock, powered by the device's secure store.
+- **Light and dark themes** — a fully theme-aware interface.
+- **Data export** — download a JSON backup of all your data at any time.
+- **Accounts** — email and password authentication, with sessions that persist across restarts.
+
+---
+
+## Architecture Highlights
+
+**Local-first with cloud sync.** The app treats the device's local storage as the source of truth, so reads are instant and the app remains fully usable **offline**. Every change is saved locally first, then backed up to the cloud in the background. When a user signs in on a new device, their data is restored from the cloud.
+
+- **Offline-first reads/writes** — backed by on-device storage (`AsyncStorage`), so the app works with no internet connection.
+- **Cloud backup & restore** — data syncs to Cloud Firestore, scoped per user, enabling cross-device restore.
+- **Per-user data isolation** — Firestore security rules ensure each account can only ever read or write its own data.
+- **Persisted authentication** — Firebase Auth keeps users signed in between sessions.
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Mobile Framework | Expo (SDK 54) + React Native |
-| Language | JavaScript (JSX) |
-| Navigation | @react-navigation/native + @react-navigation/bottom-tabs + @react-navigation/stack |
-| Storage | AsyncStorage |
-| Icons | @expo/vector-icons (Ionicons) |
-| Biometrics (planned) | expo-local-authentication |
-| Secure Storage (planned) | expo-secure-store |
+- **Framework:** React Native (Expo)
+- **Navigation:** React Navigation (bottom tabs)
+- **Backend:** Firebase — Authentication (email/password) + Cloud Firestore
+- **Local storage:** `@react-native-async-storage/async-storage`
+- **Secure storage:** `expo-secure-store` (PIN) + `expo-local-authentication` (biometrics)
+- **Charts:** `react-native-svg`
+- **UX:** `react-native-keyboard-aware-scroll-view`, custom themed toasts and dialogs
 
 ---
 
-## Design Decisions
+## Getting Started
 
-- Income always goes to **Savings first** — users transfer to Expense when ready to spend
-- Currency is set to **Philippine Peso (₱)**
-- Dark theme UI optimized for mobile readability
-- Categories: Food, Games, Transport, Shopping, Needs, Wants, Health, Other
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) (LTS)
+- The [Expo Go](https://expo.dev/go) app on an Android device, or an Android emulator
+- A free [Firebase](https://firebase.google.com/) project
+
+### Installation
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/Icession/SplitVault.git
+cd SplitVault
+
+# 2. Install dependencies
+npm install
+
+# 3. Set up your Firebase config (see below)
+
+# 4. Start the development server
+npx expo start
+```
+
+Then scan the QR code with Expo Go (Android) to run the app.
+
+### Firebase Setup
+
+This project uses Firebase for authentication and cloud sync. The real config file is kept out of version control, so you'll provide your own:
+
+1. Create a project in the [Firebase Console](https://console.firebase.google.com/).
+2. **Authentication** → enable the **Email/Password** sign-in method.
+3. **Firestore Database** → create a database.
+4. **Firestore → Rules** → publish these per-user rules:
+
+   ```
+   rules_version = '2';
+   service cloud.firestore {
+     match /databases/{database}/documents {
+       match /users/{userId}/{document=**} {
+         allow read, write: if request.auth != null && request.auth.uid == userId;
+       }
+     }
+   }
+   ```
+
+5. Copy the example config and fill in your project's values:
+
+   ```bash
+   cp src/firebase/firebaseConfig.example.js src/firebase/firebaseConfig.js
+   ```
+
+   Then edit `src/firebase/firebaseConfig.js` with the values from
+   **Firebase Console → Project settings → Your apps → SDK setup and configuration**.
+
+> **Note on config keys:** Firebase web/client config values are not secrets — they ship inside every client app. User data is protected by Firestore **security rules** and authentication, not by hiding these values. The config file is kept out of the repo as good practice, not as a security control.
 
 ---
 
-## Status
+## Project Structure
 
-🚧 **Currently in active development** — core features are complete and functional. The following are planned for upcoming releases:
-
-- PIN / biometric lock screen
-- Budget limits per category
-- Recurring transactions
-- Monthly analytics and charts
-- Data export (CSV / JSON)
-- Google Drive backup
-- Light mode toggle
-- Play Store release via EAS Build
+```
+SplitVault/
+├── App.js                  # Root: auth gate, app-lock gate, navigation
+├── src/
+│   ├── components/         # Reusable UI (dialogs, toasts, fields, charts helpers)
+│   ├── constants/          # Categories, currency formatting, shared helpers
+│   ├── firebase/           # Firebase init + auth helpers
+│   ├── navigation/         # Tab navigator + auth flow
+│   ├── screens/            # Home, Transfer, Goals, History, Insights, Settings, etc.
+│   ├── storage/            # Local-first data layer + cloud sync, app-lock storage
+│   └── theme/              # Theme context + light/dark palettes
+└── assets/                 # App icon, splash, adaptive icon
+```
 
 ---
 
-## Author
+## Roadmap
 
-**Kurt Carcueva** — [@Icession](https://github.com/Icession)
+- Google sign-in
+- Recurring transactions and budgets
+- Monthly income vs. expense trends
+- Google Play Store release
+
+---
+
+## License
+
+See [LICENSE](LICENSE) for details.
