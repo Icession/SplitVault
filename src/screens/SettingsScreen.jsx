@@ -9,7 +9,6 @@ import {
   TextInput,
   Modal,
   Platform,
-  Share,
   Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +19,8 @@ import * as LocalAuthentication from 'expo-local-authentication';
 
 import { formatPeso, STORAGE_KEYS } from '../constants';
 import { getWallets, saveTransactions, saveGoals, getProfile, saveProfile, getCategories, saveCategories, exportData } from '../storage/storage';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { useTheme } from '../theme/ThemeContext';
 import FadeInView from '../components/FadeInView';
 import PressableScale from '../components/PressableScale';
@@ -85,7 +86,7 @@ export default function SettingsScreen({ onReset }) {
 
   const [lockEnabled, setLockEnabledState] = useState(false);
   const [bioAvailable, setBioAvailable] = useState(false);
-  const [lockStep, setLockStep] = useState(null);
+  const [lockStep, setLockStep] = useState(null); // 'create' | 'confirm' | 'biometric'
   const [firstPin, setFirstPin] = useState('');
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
@@ -266,8 +267,23 @@ export default function SettingsScreen({ onReset }) {
         a.download = filename;
         a.click();
         URL.revokeObjectURL(url);
+        return;
+      }
+
+      // Native: write a real .json file, then open the share sheet with it.
+      const fileUri = FileSystem.documentDirectory + filename;
+      await FileSystem.writeAsStringAsync(fileUri, json, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'application/json',
+          dialogTitle: 'Save your SplitVault backup',
+          UTI: 'public.json',
+        });
       } else {
-        await Share.share({ title: filename, message: json });
+        Alert.alert('Backup saved', `Your backup was saved as ${filename}.`);
       }
     } catch (e) {
       Alert.alert('Export Failed', 'Something went wrong creating your backup.');
