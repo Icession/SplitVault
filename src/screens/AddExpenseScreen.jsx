@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,11 +12,14 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-import { COLORS, CATEGORIES, formatPeso } from '../constants';
+import { CATEGORIES, formatPeso } from '../constants';
 import { getWallets, saveWallets, addTransaction } from '../storage/storage';
 import { useToast } from '../components/ToastProvider';
+import { useTheme } from '../theme/ThemeContext';
 
 export default function AddExpenseScreen({ navigation, onClose }) {
+  const { colors: COLORS } = useTheme();
+  const styles = useMemo(() => createStyles(COLORS), [COLORS]);
 
   const [amount, setAmount] = useState('');
   const [label, setLabel] = useState('');
@@ -205,7 +208,7 @@ export default function AddExpenseScreen({ navigation, onClose }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,

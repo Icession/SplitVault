@@ -27,6 +27,10 @@ export default function FloatingField({
   autoComplete,
   textContentType,
   autoCorrect = false,
+  inputRef,
+  returnKeyType,
+  onSubmitEditing,
+  blurOnSubmit,
 }) {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
@@ -81,6 +85,7 @@ export default function FloatingField({
             {label}
           </Animated.Text>
           <TextInput
+            ref={inputRef}
             style={styles.input}
             value={value}
             onChangeText={onChangeText}
@@ -92,6 +97,9 @@ export default function FloatingField({
             autoComplete={autoComplete}
             textContentType={textContentType}
             autoCorrect={autoCorrect}
+            returnKeyType={returnKeyType}
+            onSubmitEditing={onSubmitEditing}
+            blurOnSubmit={blurOnSubmit}
           />
         </View>
 

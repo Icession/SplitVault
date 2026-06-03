@@ -1,20 +1,20 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  KeyboardAvoidingView,
   Platform,
   Animated,
   Pressable,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  findNodeHandle,
   StatusBar as RNStatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
 import { useTheme } from '../theme/ThemeContext';
 import FadeInView from '../components/FadeInView';
@@ -32,7 +32,7 @@ export default function AuthScreen({ onForgotPassword }) {
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
-  const [mode, setMode] = useState('login');
+  const [mode, setMode] = useState('login'); // 'login' | 'register'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -40,9 +40,12 @@ export default function AuthScreen({ onForgotPassword }) {
   const [authError, setAuthError] = useState('');
 
   const [segW, setSegW] = useState(0);
-  const seg = useRef(new Animated.Value(0)).current;
-  const fade = useRef(new Animated.Value(1)).current;
-  const slide = useRef(new Animated.Value(0)).current;
+  const kasvRef = useRef(null);
+  const passwordRef = useRef(null);
+  const confirmRef = useRef(null);
+  const seg = useRef(new Animated.Value(0)).current;   // 0 = login, 1 = register
+  const fade = useRef(new Animated.Value(1)).current;  // form crossfade
+  const slide = useRef(new Animated.Value(0)).current; // form slide
 
   const isRegister = mode === 'register';
 
@@ -93,13 +96,19 @@ export default function AuthScreen({ onForgotPassword }) {
     if (!result.success) {
       setAuthError(result.error);
     }
+    // On success, the auth listener in App.js navigates into the app.
   };
 
-  const handleGoogle = () => {
-    Alert.alert(
-      'Coming soon',
-      'Google sign-in will be available in an upcoming update. For now, please use your email and password.'
-    );
+  // Move focus to the next field AND scroll it above the keyboard
+  // (programmatic focus doesn't re-trigger the keyboard, so we scroll manually).
+  const focusAndScroll = (ref) => {
+    if (!ref.current) return;
+    ref.current.focus();
+    setTimeout(() => {
+      if (kasvRef.current && ref.current) {
+        kasvRef.current.scrollToFocusedInput(findNodeHandle(ref.current));
+      }
+    }, 60);
   };
 
   const segTranslate = seg.interpolate({
@@ -110,15 +119,18 @@ export default function AuthScreen({ onForgotPassword }) {
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
-      <KeyboardAvoidingView
+      <KeyboardAwareScrollView
+        ref={kasvRef}
         style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        enableOnAndroid
+        extraScrollHeight={40}
+        keyboardOpeningTime={0}
+        enableResetScrollToCoords={false}
       >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
+        <View>
           {/* Edge-to-edge hero */}
           <FadeInView delay={0}>
             <View style={styles.hero}>
@@ -179,21 +191,6 @@ export default function AuthScreen({ onForgotPassword }) {
                     : 'Welcome back to your vault'}
                 </Text>
 
-                <PressableScale
-                  style={styles.googleBtn}
-                  onPress={handleGoogle}
-                  android_ripple={{ color: colors.border }}
-                >
-                  <Ionicons name="logo-google" size={18} color="#EA4335" />
-                  <Text style={styles.googleText}>Continue with Google</Text>
-                </PressableScale>
-
-                <View style={styles.dividerRow}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>OR</Text>
-                  <View style={styles.dividerLine} />
-                </View>
-
                 <FloatingField
                   label="Email"
                   icon="mail-outline"
@@ -204,6 +201,9 @@ export default function AuthScreen({ onForgotPassword }) {
                   textContentType="emailAddress"
                   error={emailError}
                   errorText="Enter a valid email address"
+                  returnKeyType="next"
+                  onSubmitEditing={() => focusAndScroll(passwordRef)}
+                  blurOnSubmit={false}
                 />
 
                 <FloatingField
@@ -214,6 +214,16 @@ export default function AuthScreen({ onForgotPassword }) {
                   secure
                   autoComplete={isRegister ? 'password-new' : 'password'}
                   textContentType={isRegister ? 'newPassword' : 'password'}
+                  inputRef={passwordRef}
+                  returnKeyType={isRegister ? 'next' : 'done'}
+                  onSubmitEditing={() => {
+                    if (isRegister) {
+                      focusAndScroll(confirmRef);
+                    } else {
+                      handleSubmit();
+                    }
+                  }}
+                  blurOnSubmit={!isRegister}
                 />
 
                 {isRegister && password.length > 0 && (
@@ -246,6 +256,9 @@ export default function AuthScreen({ onForgotPassword }) {
                     errorText="Passwords don't match"
                     success={passwordsMatch}
                     successText="Passwords match"
+                    inputRef={confirmRef}
+                    returnKeyType="done"
+                    onSubmitEditing={handleSubmit}
                   />
                 )}
 
@@ -292,8 +305,8 @@ export default function AuthScreen({ onForgotPassword }) {
 
             </View>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </View>
+        </KeyboardAwareScrollView>
     </View>
   );
 }
@@ -301,7 +314,7 @@ export default function AuthScreen({ onForgotPassword }) {
 const createStyles = (COLORS) => StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: HERO,
+    backgroundColor: COLORS.card,
   },
   flex: {
     flex: 1,
@@ -312,7 +325,7 @@ const createStyles = (COLORS) => StyleSheet.create({
   hero: {
     backgroundColor: HERO,
     paddingTop: heroTopPad,
-    paddingBottom: 56,
+    paddingBottom: 38,
     paddingHorizontal: 24,
     overflow: 'hidden',
   },

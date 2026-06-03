@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   doc,
   getDoc,
@@ -8,53 +9,120 @@ import {
 import { db, auth } from '../firebase/firebaseConfig';
 import { CATEGORIES } from '../constants';
 
-// Every user's data lives under users/{uid}/app/{key}, so accounts never
-// see each other's data. Each "key" below mirrors the old storage keys.
-const uid = () => (auth.currentUser ? auth.currentUser.uid : null);
-const ref = (u, key) => doc(db, 'users', u, 'app', key);
+// LOCAL-FIRST + CLOUD SYNC
+// ------------------------
+// The phone's local storage (AsyncStorage) is the source of truth: every read
+// comes from local (instant + works offline). Every save writes local first,
+// then pushes to Firestore in the background as a cloud backup. On a brand-new
+// device, syncOnLogin() pulls cloud data down to restore it.
 
-const readDoc = async (key, fallback) => {
+const uid = () => (auth.currentUser ? auth.currentUser.uid : null);
+
+const KEYS = ['wallets', 'transactions', 'goals', 'profile', 'categories', 'meta'];
+
+// Local keys are scoped per user so multiple accounts on one device don't mix.
+const localKey = (u, key) => `sv:${u}:${key}`;
+const cloudRef = (u, key) => doc(db, 'users', u, 'app', key);
+
+// ---- LOCAL (source of truth) ----
+const readLocal = async (key, fallback) => {
   try {
     const u = uid();
     if (!u) return fallback;
-    const snap = await getDoc(ref(u, key));
-    return snap.exists() ? snap.data() : fallback;
+    const raw = await AsyncStorage.getItem(localKey(u, key));
+    return raw != null ? JSON.parse(raw) : fallback;
   } catch (e) {
-    console.error(`read ${key} error:`, e);
+    console.error(`readLocal ${key} error:`, e);
     return fallback;
   }
 };
 
-const writeDoc = async (key, data) => {
+const writeLocal = async (key, data) => {
   try {
     const u = uid();
     if (!u) return;
-    await setDoc(ref(u, key), data);
+    await AsyncStorage.setItem(localKey(u, key), JSON.stringify(data));
   } catch (e) {
-    console.error(`write ${key} error:`, e);
+    console.error(`writeLocal ${key} error:`, e);
   }
 };
 
-// WALLETS
+// ---- CLOUD (best-effort backup) ----
+const writeCloud = (key, data) => {
+  const u = uid();
+  if (!u) return;
+  // Fire-and-forget. If offline, this fails quietly; the next sync catches up.
+  setDoc(cloudRef(u, key), data).catch(() => {});
+};
+
+// Save = write local now (awaited), back up to cloud in the background.
+const save = async (key, data) => {
+  await writeLocal(key, data);
+  writeCloud(key, data);
+};
+
+// ---- SYNC ----
+const pushAllToCloud = async () => {
+  const u = uid();
+  if (!u) return;
+  for (const key of KEYS) {
+    try {
+      const raw = await AsyncStorage.getItem(localKey(u, key));
+      if (raw != null) await setDoc(cloudRef(u, key), JSON.parse(raw));
+    } catch (e) {
+      break; // offline or error: stop (best-effort)
+    }
+  }
+};
+
+const pullAllToLocal = async () => {
+  const u = uid();
+  if (!u) return;
+  for (const key of KEYS) {
+    try {
+      const snap = await getDoc(cloudRef(u, key));
+      if (snap.exists()) {
+        await AsyncStorage.setItem(localKey(u, key), JSON.stringify(snap.data()));
+      }
+    } catch (e) {
+      break; // offline: can't restore right now
+    }
+  }
+};
+
+// Run right after login. If this device already has local data, back it up to
+// the cloud. If it's a fresh device, pull the cloud copy down to restore it.
+export const syncOnLogin = async () => {
+  const u = uid();
+  if (!u) return;
+  try {
+    const hasLocal = await AsyncStorage.getItem(localKey(u, 'meta'));
+    if (hasLocal != null) {
+      pushAllToCloud(); // background backup
+    } else {
+      await pullAllToLocal(); // wait so setup state is correct on a new device
+    }
+  } catch (e) {
+    console.error('syncOnLogin error:', e);
+  }
+};
+
+// ---- PUBLIC API (same signatures the screens already use) ----
 export const getWallets = async () => {
-  const d = await readDoc('wallets', { savings: 0, expense: 0 });
+  const d = await readLocal('wallets', { savings: 0, expense: 0 });
   return { savings: d.savings || 0, expense: d.expense || 0 };
 };
 
 export const saveWallets = async (wallets) =>
-  writeDoc('wallets', {
-    savings: wallets.savings || 0,
-    expense: wallets.expense || 0,
-  });
+  save('wallets', { savings: wallets.savings || 0, expense: wallets.expense || 0 });
 
-// TRANSACTIONS (stored as one document holding the array, mirroring the old shape)
 export const getTransactions = async () => {
-  const d = await readDoc('transactions', { list: [] });
+  const d = await readLocal('transactions', { list: [] });
   return Array.isArray(d.list) ? d.list : [];
 };
 
 export const saveTransactions = async (transactions) =>
-  writeDoc('transactions', { list: transactions });
+  save('transactions', { list: transactions });
 
 export const addTransaction = async (entry) => {
   const existing = await getTransactions();
@@ -63,17 +131,15 @@ export const addTransaction = async (entry) => {
   return updated;
 };
 
-// GOALS
 export const getGoals = async () => {
-  const d = await readDoc('goals', { list: [] });
+  const d = await readLocal('goals', { list: [] });
   return Array.isArray(d.list) ? d.list : [];
 };
 
-export const saveGoals = async (goals) => writeDoc('goals', { list: goals });
+export const saveGoals = async (goals) => save('goals', { list: goals });
 
-// PROFILE
 export const getProfile = async () => {
-  const d = await readDoc('profile', { fullName: '', email: '', currency: 'PHP' });
+  const d = await readLocal('profile', { fullName: '', email: '', currency: 'PHP' });
   return {
     fullName: d.fullName || '',
     email: d.email || '',
@@ -82,31 +148,28 @@ export const getProfile = async () => {
 };
 
 export const saveProfile = async (profile) =>
-  writeDoc('profile', {
+  save('profile', {
     fullName: profile.fullName || '',
     email: profile.email || '',
     currency: profile.currency || 'PHP',
   });
 
-// CATEGORIES
 export const getCategories = async () => {
-  const d = await readDoc('categories', null);
+  const d = await readLocal('categories', null);
   if (d && Array.isArray(d.list)) return d.list;
   return CATEGORIES;
 };
 
 export const saveCategories = async (categories) =>
-  writeDoc('categories', { list: categories });
+  save('categories', { list: categories });
 
-// SETUP FLAG
 export const getIsSetup = async () => {
-  const d = await readDoc('meta', { isSetup: false });
+  const d = await readLocal('meta', { isSetup: false });
   return d.isSetup === true;
 };
 
-export const setIsSetup = async () => writeDoc('meta', { isSetup: true });
+export const setIsSetup = async () => save('meta', { isSetup: true });
 
-// BACKUP
 export const exportData = async () => {
   const [wallets, transactions, goals, profile, categories, isSetup] = await Promise.all([
     getWallets(),
@@ -124,14 +187,16 @@ export const exportData = async () => {
   };
 };
 
-// Remove all of the signed-in user's data (used by the full reset).
+// Wipe this user's data locally and in the cloud (best-effort).
 export const clearAllData = async () => {
+  const u = uid();
+  if (!u) return;
   try {
-    const u = uid();
-    if (!u) return;
-    const keys = ['wallets', 'transactions', 'goals', 'profile', 'categories', 'meta'];
-    await Promise.all(keys.map((k) => deleteDoc(ref(u, k))));
+    await AsyncStorage.multiRemove(KEYS.map((k) => localKey(u, k)));
   } catch (e) {
-    console.error('clearAllData error:', e);
+    console.error('clear local error:', e);
+  }
+  for (const key of KEYS) {
+    deleteDoc(cloudRef(u, key)).catch(() => {});
   }
 };

@@ -13,7 +13,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
-import { getIsSetup, clearAllData } from './src/storage/storage';
+import { getIsSetup, clearAllData, syncOnLogin } from './src/storage/storage';
 import { isLockEnabled, clearLock } from './src/storage/lock';
 import { subscribeToAuth, logOut } from './src/firebase/auth';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
@@ -36,6 +36,7 @@ function AppContent() {
   const [lockChecked, setLockChecked] = useState(false);
   const [locked, setLocked] = useState(false);
 
+  // Listen to real Firebase auth state (keeps users signed in across restarts).
   useEffect(() => {
     const unsubscribe = subscribeToAuth((u) => {
       setUser(u);
@@ -44,6 +45,7 @@ function AppContent() {
     return unsubscribe;
   }, []);
 
+  // Check the app lock once on launch.
   useEffect(() => {
     let active = true;
     isLockEnabled().then((on) => {
@@ -57,16 +59,20 @@ function AppContent() {
     };
   }, []);
 
+  // Whenever a user is signed in, sync data (restore on a new device or back up
+  // this one), then check whether they've completed setup.
   useEffect(() => {
     if (!user) return;
     let active = true;
     setLoadingSetup(true);
-    getIsSetup().then((setupComplete) => {
+    (async () => {
+      await syncOnLogin();
+      const setupComplete = await getIsSetup();
       if (active) {
         setIsSetup(setupComplete);
         setLoadingSetup(false);
       }
-    });
+    })();
     return () => {
       active = false;
     };
@@ -76,6 +82,7 @@ function AppContent() {
     ? { ...DarkTheme, colors: { ...DarkTheme.colors, background: colors.background } }
     : { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: colors.background } };
 
+  // Full reset: wipe local data, clear the lock, and sign out.
   const handleFullReset = async () => {
     await clearAllData();
     await clearLock();
@@ -92,10 +99,12 @@ function AppContent() {
     </SafeAreaView>
   );
 
+  // Wait until we know both the lock state and the auth state.
   if (!lockChecked || !authReady) {
     return <Spinner />;
   }
 
+  // App lock gate (device-level), shown before anything else.
   if (locked) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -105,6 +114,7 @@ function AppContent() {
     );
   }
 
+  // Not signed in → show the auth flow.
   if (!user) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
