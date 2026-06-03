@@ -1,0 +1,14 @@
+# .easignore controls what EAS Build uploads. It overrides .gitignore.
+# Mirror the usual ignores here...
+node_modules/
+.expo/
+dist/
+web-build/
+*.log
+.DS_Store
+.git/
+docs/
+
+# ...then force-INCLUDE the gitignored Firebase config so the build has it.
+# (A leading "!" un-ignores a file. Keep this LAST so it wins.)
+!src/firebase/firebaseConfig.js
