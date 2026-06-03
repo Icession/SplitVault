@@ -8,6 +8,8 @@ import {
   ScrollView,
   Alert,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -291,7 +293,10 @@ export default function GoalsScreen({ navigation }) {
         animationType="slide"
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <View style={styles.modalSheet}>
             <Text style={styles.modalTitle}>
               {editingId ? 'Edit Goal' : 'New Savings Goal'}
@@ -355,7 +360,7 @@ export default function GoalsScreen({ navigation }) {
               </PressableScale>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Add funds modal */}
@@ -365,7 +370,10 @@ export default function GoalsScreen({ navigation }) {
         animationType="slide"
         onRequestClose={() => setFundsVisible(false)}
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <View style={styles.modalSheet}>
             <Text style={styles.modalTitle}>Add Funds</Text>
             {fundsGoal && (
@@ -395,7 +403,7 @@ export default function GoalsScreen({ navigation }) {
               </PressableScale>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {dialog}
