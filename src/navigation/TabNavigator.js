@@ -7,6 +7,7 @@ import HomeScreen from '../screens/HomeScreen';
 import TransferScreen from '../screens/TransferScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import GoalsScreen from '../screens/GoalsScreen';
+import InsightsScreen from '../screens/InsightsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 
 import { useTheme } from '../theme/ThemeContext';
@@ -19,6 +20,7 @@ const getTabIcon = (routeName, color) => {
     case 'Transfer': return <Ionicons name="swap-horizontal" size={22} color={color} />;
     case 'Goals': return <Ionicons name="flag" size={22} color={color} />;
     case 'History': return <Ionicons name="time" size={22} color={color} />;
+    case 'Insights': return <Ionicons name="pie-chart" size={22} color={color} />;
     case 'Settings': return <Ionicons name="settings-outline" size={22} color={color} />;
     default: return null;
   }
@@ -52,6 +54,7 @@ export default function TabNavigator({ onReset }) {
       <Tab.Screen name="Transfer" component={TransferScreen} />
       <Tab.Screen name="Goals" component={GoalsScreen} />
       <Tab.Screen name="History" component={HistoryScreen} />
+      <Tab.Screen name="Insights" component={InsightsScreen} />
       <Tab.Screen name="Settings">
         {() => <SettingsScreen onReset={onReset} />}
       </Tab.Screen>
