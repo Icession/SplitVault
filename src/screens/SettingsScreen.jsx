@@ -9,6 +9,8 @@ import {
   TextInput,
   Modal,
   Platform,
+  KeyboardAvoidingView,
+  ActivityIndicator,
   Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,7 +20,7 @@ import Constants from 'expo-constants';
 import * as LocalAuthentication from 'expo-local-authentication';
 
 import { formatPeso, STORAGE_KEYS } from '../constants';
-import { getWallets, saveTransactions, saveGoals, getProfile, saveProfile, getCategories, saveCategories, exportData } from '../storage/storage';
+import { getWallets, saveTransactions, saveGoals, getProfile, saveProfile, getCategories, saveCategories, exportData, clearAllData } from '../storage/storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { useTheme } from '../theme/ThemeContext';
@@ -33,7 +35,7 @@ import {
   setBiometricEnabled,
   clearLock,
 } from '../storage/lock';
-import { logOut } from '../firebase/auth';
+import { logOut, reauthenticate, deleteCurrentUser } from '../firebase/auth';
 
 const CURRENCIES = [
   { code: 'PHP', label: 'Philippine Peso (₱)' },
@@ -74,9 +76,13 @@ export default function SettingsScreen({ onReset }) {
   const { confirm, dialog } = useConfirm();
 
   const [wallets, setWallets] = useState({ savings: 0, expense: 0 });
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [currency, setCurrency] = useState('PHP');
+  const [profile, setProfile] = useState({
+    firstName: '',
+    lastName: '',
+    fullName: '',
+    email: '',
+    currency: 'PHP',
+  });
   const [showCurrency, setShowCurrency] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -96,9 +102,7 @@ export default function SettingsScreen({ onReset }) {
       const w = await getWallets();
       setWallets(w);
       const p = await getProfile();
-      setFullName(p.fullName || '');
-      setEmail(p.email || '');
-      setCurrency(p.currency || 'PHP');
+      setProfile(p);
       const c = await getCategories();
       setCategories(c);
     };
@@ -220,11 +224,27 @@ export default function SettingsScreen({ onReset }) {
   };
 
   const selectedCurrency =
-    CURRENCIES.find((c) => c.code === currency) || CURRENCIES[0];
+    CURRENCIES.find((c) => c.code === profile.currency) || CURRENCIES[0];
 
-  const handleSaveProfile = async () => {
-    await saveProfile({ fullName: fullName.trim(), email: email.trim(), currency });
-    Alert.alert('Profile Saved', 'Your profile has been updated.');
+  // Name shown read-only: full name, or fall back to the email username.
+  const displayName =
+    profile.fullName ||
+    (profile.email ? profile.email.split('@')[0] : '');
+
+  // Currency auto-saves on change; we keep the rest of the profile intact.
+  const handleSelectCurrency = async (code) => {
+    const updated = { ...profile, currency: code };
+    setProfile(updated);
+    setShowCurrency(false);
+    await saveProfile(updated);
+  };
+
+  // Username is editable and auto-saves when the field loses focus.
+  const handleUsernameChange = (text) => {
+    setProfile((p) => ({ ...p, username: text }));
+  };
+  const handleUsernameBlur = async () => {
+    await saveProfile(profile);
   };
 
   const handleChangePassword = () => {
@@ -302,6 +322,48 @@ export default function SettingsScreen({ onReset }) {
     await onReset();
   };
 
+  const [deleteVisible, setDeleteVisible] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
+  const openDeleteAccount = () => {
+    setDeletePassword('');
+    setDeleteError('');
+    setDeleteVisible(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deletePassword || deleting) return;
+    setDeleting(true);
+    setDeleteError('');
+
+    // 1. Re-confirm the password (Firebase requires recent login to delete).
+    const reauth = await reauthenticate(deletePassword);
+    if (!reauth.success) {
+      setDeleting(false);
+      setDeleteError(reauth.error || 'Could not verify your password.');
+      return;
+    }
+
+    // 2. Delete the user's data (cloud + local) while still authenticated,
+    //    and clear the device lock so there's no leftover lock screen.
+    await clearAllData();
+    await clearLock();
+
+    // 3. Delete the Firebase account itself (frees the email).
+    const del = await deleteCurrentUser();
+    if (!del.success) {
+      setDeleting(false);
+      setDeleteError(del.error || 'Could not delete your account.');
+      return;
+    }
+
+    // Success: the auth listener in App.js returns to the sign-up screen.
+    setDeleting(false);
+    setDeleteVisible(false);
+  };
+
   const handleClearTransactions = async () => {
     const ok = await confirm({
       title: 'Clear History',
@@ -364,23 +426,25 @@ export default function SettingsScreen({ onReset }) {
             <Text style={styles.sectionTitle}>PROFILE</Text>
           </View>
 
-          <Text style={styles.fieldLabel}>Full Name</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter your full name"
-            placeholderTextColor={colors.subtext}
-            value={fullName}
-            onChangeText={setFullName}
-          />
+          <Text style={styles.fieldLabel}>Name</Text>
+          <View style={styles.readonlyField}>
+            <Text style={styles.readonlyText}>{displayName || '—'}</Text>
+          </View>
 
           <Text style={styles.fieldLabel}>Email</Text>
+          <View style={styles.readonlyField}>
+            <Text style={styles.readonlyText}>{profile.email || '—'}</Text>
+          </View>
+
+          <Text style={styles.fieldLabel}>Username</Text>
           <TextInput
             style={styles.input}
-            placeholder="Enter your email"
+            placeholder="Choose a username"
             placeholderTextColor={colors.subtext}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
+            value={profile.username}
+            onChangeText={handleUsernameChange}
+            onEndEditing={handleUsernameBlur}
+            onBlur={handleUsernameBlur}
             autoCapitalize="none"
           />
 
@@ -401,15 +465,12 @@ export default function SettingsScreen({ onReset }) {
           {showCurrency && (
             <View style={styles.currencyList}>
               {CURRENCIES.map((c) => {
-                const active = c.code === currency;
+                const active = c.code === profile.currency;
                 return (
                   <TouchableOpacity
                     key={c.code}
                     style={[styles.currencyOption, active && styles.currencyOptionActive]}
-                    onPress={() => {
-                      setCurrency(c.code);
-                      setShowCurrency(false);
-                    }}
+                    onPress={() => handleSelectCurrency(c.code)}
                   >
                     <Text style={[
                       styles.currencyOptionText,
@@ -423,11 +484,6 @@ export default function SettingsScreen({ onReset }) {
               })}
             </View>
           )}
-
-          <PressableScale style={styles.saveBtn} onPress={handleSaveProfile}>
-            <Ionicons name="save-outline" size={16} color="#fff" />
-            <Text style={styles.saveBtnText}>Save Profile</Text>
-          </PressableScale>
         </View>
 
         <View style={styles.sectionCard}>
@@ -610,6 +666,16 @@ export default function SettingsScreen({ onReset }) {
           <Text style={styles.accountHint}>
             Erases everything and starts fresh from setup.
           </Text>
+
+          <View style={styles.divider} />
+
+          <PressableScale style={styles.deleteBtn} onPress={openDeleteAccount}>
+            <Ionicons name="trash-outline" size={18} color={colors.danger} />
+            <Text style={styles.deleteBtnText}>Delete Account</Text>
+          </PressableScale>
+          <Text style={styles.accountHint}>
+            Permanently deletes your account and all data. This cannot be undone.
+          </Text>
         </View>
 
         <View style={styles.sectionCard}>
@@ -714,6 +780,69 @@ export default function SettingsScreen({ onReset }) {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        visible={deleteVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => !deleting && setDeleteVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.deleteOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.deleteSheet}>
+            <View style={styles.deleteIconCircle}>
+              <Ionicons name="trash-outline" size={24} color={colors.danger} />
+            </View>
+            <Text style={styles.deleteTitle}>Delete Account</Text>
+            <Text style={styles.deleteMessage}>
+              This permanently deletes your account and all your data — wallets,
+              transactions, goals, and profile. This cannot be undone. Enter your
+              password to confirm.
+            </Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Your password"
+              placeholderTextColor={colors.subtext}
+              value={deletePassword}
+              onChangeText={(t) => { setDeletePassword(t); if (deleteError) setDeleteError(''); }}
+              secureTextEntry
+              autoCapitalize="none"
+              editable={!deleting}
+            />
+
+            {deleteError ? (
+              <View style={styles.deleteErrorRow}>
+                <Ionicons name="alert-circle" size={15} color={colors.danger} />
+                <Text style={styles.deleteErrorText}>{deleteError}</Text>
+              </View>
+            ) : null}
+
+            <View style={styles.deleteActions}>
+              <PressableScale
+                style={styles.deleteCancelBtn}
+                onPress={() => !deleting && setDeleteVisible(false)}
+                disabled={deleting}
+              >
+                <Text style={styles.deleteCancelText}>Cancel</Text>
+              </PressableScale>
+              <PressableScale
+                style={[styles.deleteConfirmBtn, { opacity: deletePassword && !deleting ? 1 : 0.5 }]}
+                onPress={handleConfirmDelete}
+                disabled={!deletePassword || deleting}
+              >
+                {deleting ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.deleteConfirmText}>Delete</Text>
+                )}
+              </PressableScale>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -817,6 +946,19 @@ const createStyles = (COLORS) => StyleSheet.create({
     fontSize: 15,
     color: COLORS.text,
     marginBottom: 14,
+  },
+  readonlyField: {
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    marginBottom: 14,
+  },
+  readonlyText: {
+    fontSize: 15,
+    color: COLORS.text,
   },
   catChips: {
     flexDirection: 'row',
@@ -1020,6 +1162,103 @@ const createStyles = (COLORS) => StyleSheet.create({
     gap: 8,
   },
   resetBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: COLORS.danger,
+    borderRadius: 12,
+    padding: 14,
+    gap: 8,
+  },
+  deleteBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.danger,
+  },
+  deleteOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  deleteSheet: {
+    backgroundColor: COLORS.card,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  deleteIconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: COLORS.danger + '1A',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginBottom: 14,
+  },
+  deleteTitle: {
+    fontSize: 19,
+    fontWeight: '800',
+    color: COLORS.text,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  deleteMessage: {
+    fontSize: 14,
+    color: COLORS.subtext,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 18,
+  },
+  deleteErrorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+    marginBottom: 2,
+  },
+  deleteErrorText: {
+    flex: 1,
+    fontSize: 13,
+    color: COLORS.danger,
+    fontWeight: '600',
+  },
+  deleteActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 18,
+  },
+  deleteCancelBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  deleteCancelText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  deleteConfirmBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: COLORS.danger,
+  },
+  deleteConfirmText: {
     fontSize: 15,
     fontWeight: '700',
     color: '#fff',

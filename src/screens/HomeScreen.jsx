@@ -38,7 +38,12 @@ export default function HomeScreen({ navigation }) {
     const p = await getProfile();
     setWallets(w);
     setTransactions(t);
-    setProfileName(p.fullName ? p.fullName.trim().split(' ')[0] : '');
+    const first =
+      p.username ||
+      p.firstName ||
+      (p.fullName ? p.fullName.trim().split(' ')[0] : '') ||
+      (p.email ? p.email.split('@')[0] : '');
+    setProfileName(first);
   }, []);
 
   useFocusEffect(

@@ -143,17 +143,39 @@ function AppContent() {
 }
 
 export default function App() {
-  // On web, reset default page margins and lock the document to the viewport
-  // height so nothing overflows and clips the bottom tab bar.
+  // On web, reset default page margins and lock the document to the *visible*
+  // viewport height so nothing overflows and clips the bottom tab bar.
+  // We use 100dvh (dynamic viewport height) so the layout tracks the area that
+  // is actually visible — accounting for the mobile browser's address bar and
+  // the device's bottom navigation bar — instead of 100vh, which measures the
+  // larger viewport and pushes the tab bar behind that bottom chrome.
   useEffect(() => {
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
-      document.documentElement.style.height = '100%';
-      document.body.style.height = '100%';
-      document.body.style.margin = '0';
-      const root = document.getElementById('root');
-      if (root) {
-        root.style.height = '100%';
+      // Opt in to drawing under the device safe areas so that
+      // env(safe-area-inset-*) reports real values (e.g. the iOS home indicator).
+      let meta = document.querySelector('meta[name="viewport"]');
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.setAttribute('name', 'viewport');
+        document.head.appendChild(meta);
       }
+      meta.setAttribute(
+        'content',
+        'width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover'
+      );
+
+      // Fall back to 100vh first, then prefer 100dvh where supported.
+      const setHeights = (h) => {
+        document.documentElement.style.height = h;
+        document.body.style.height = h;
+        const root = document.getElementById('root');
+        if (root) root.style.height = h;
+      };
+      setHeights('100vh');
+      if (typeof window !== 'undefined' && window.CSS?.supports?.('height: 100dvh')) {
+        setHeights('100dvh');
+      }
+      document.body.style.margin = '0';
     }
   }, []);
 
@@ -167,9 +189,7 @@ export default function App() {
     </SafeAreaProvider>
   );
 
-  // On web (the live demo), center the app in a phone-width column so it looks
-  // like a phone instead of stretching across a wide desktop browser.
-  // Native (the real app / APK) is unaffected.
+ 
   if (Platform.OS === 'web') {
     return (
       <View style={webStyles.page}>
@@ -183,7 +203,10 @@ export default function App() {
 
 const webStyles = StyleSheet.create({
   page: {
-    height: '100vh',
+    // #root is sized to the visible viewport (100dvh, with a 100vh fallback)
+    // in the web useEffect above, so we just fill it. This keeps the bottom
+    // tab bar inside the visible area instead of behind the browser/nav chrome.
+    flex: 1,
     width: '100%',
     backgroundColor: '#000',
     alignItems: 'center',

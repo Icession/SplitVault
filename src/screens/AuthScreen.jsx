@@ -21,6 +21,7 @@ import FadeInView from '../components/FadeInView';
 import PressableScale from '../components/PressableScale';
 import FloatingField from '../components/FloatingField';
 import { signIn, signUp } from '../firebase/auth';
+import { saveProfile } from '../storage/storage';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HERO = '#064E3B';
@@ -33,6 +34,9 @@ export default function AuthScreen({ onForgotPassword }) {
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   const [mode, setMode] = useState('login'); // 'login' | 'register'
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -41,6 +45,9 @@ export default function AuthScreen({ onForgotPassword }) {
 
   const [segW, setSegW] = useState(0);
   const kasvRef = useRef(null);
+  const lastNameRef = useRef(null);
+  const usernameRef = useRef(null);
+  const emailRef = useRef(null);
   const passwordRef = useRef(null);
   const confirmRef = useRef(null);
   const seg = useRef(new Animated.Value(0)).current;   // 0 = login, 1 = register
@@ -61,8 +68,13 @@ export default function AuthScreen({ onForgotPassword }) {
   const passwordsMatch = confirm.length > 0 && password === confirm;
   const confirmError = confirm.length > 0 && password !== confirm;
 
+  const namesValid =
+    firstName.trim().length > 0 &&
+    lastName.trim().length > 0 &&
+    username.trim().length > 0;
+
   const isValid = isRegister
-    ? emailValid && passwordValid && passwordsMatch
+    ? namesValid && emailValid && passwordValid && passwordsMatch
     : emailValid && password.length > 0;
 
   const switchMode = (next) => {
@@ -92,10 +104,23 @@ export default function AuthScreen({ onForgotPassword }) {
     const result = isRegister
       ? await signUp(email, password)
       : await signIn(email, password);
-    setSubmitting(false);
     if (!result.success) {
+      setSubmitting(false);
       setAuthError(result.error);
+      return;
     }
+    // New account: save the name to the profile (the new user is now signed in,
+    // so this writes under their account). The cloud is empty for a new user, so
+    // the login sync won't overwrite it.
+    if (isRegister) {
+      await saveProfile({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        username: username.trim(),
+        email: email.trim(),
+      });
+    }
+    setSubmitting(false);
     // On success, the auth listener in App.js navigates into the app.
   };
 
@@ -191,6 +216,50 @@ export default function AuthScreen({ onForgotPassword }) {
                     : 'Welcome back to your vault'}
                 </Text>
 
+                {isRegister && (
+                  <FloatingField
+                    label="First Name"
+                    icon="person-outline"
+                    value={firstName}
+                    onChangeText={(t) => { setFirstName(t); if (authError) setAuthError(''); }}
+                    autoCapitalize="words"
+                    textContentType="givenName"
+                    returnKeyType="next"
+                    onSubmitEditing={() => focusAndScroll(lastNameRef)}
+                    blurOnSubmit={false}
+                  />
+                )}
+
+                {isRegister && (
+                  <FloatingField
+                    label="Last Name"
+                    icon="person-outline"
+                    value={lastName}
+                    onChangeText={(t) => { setLastName(t); if (authError) setAuthError(''); }}
+                    autoCapitalize="words"
+                    textContentType="familyName"
+                    inputRef={lastNameRef}
+                    returnKeyType="next"
+                    onSubmitEditing={() => focusAndScroll(usernameRef)}
+                    blurOnSubmit={false}
+                  />
+                )}
+
+                {isRegister && (
+                  <FloatingField
+                    label="Username"
+                    icon="at-outline"
+                    value={username}
+                    onChangeText={(t) => { setUsername(t); if (authError) setAuthError(''); }}
+                    autoCapitalize="none"
+                    textContentType="username"
+                    inputRef={usernameRef}
+                    returnKeyType="next"
+                    onSubmitEditing={() => focusAndScroll(emailRef)}
+                    blurOnSubmit={false}
+                  />
+                )}
+
                 <FloatingField
                   label="Email"
                   icon="mail-outline"
@@ -199,6 +268,7 @@ export default function AuthScreen({ onForgotPassword }) {
                   keyboardType="email-address"
                   autoComplete="email"
                   textContentType="emailAddress"
+                  inputRef={emailRef}
                   error={emailError}
                   errorText="Enter a valid email address"
                   returnKeyType="next"

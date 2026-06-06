@@ -31,7 +31,11 @@ const getTabIcon = (routeName, color) => {
 // React Navigation's built-in bar overriding bottom spacing on web (which was
 // clipping the labels), while still looking the same on the phone.
 function CustomTabBar({ state, navigation, colors, insets }) {
-  const bottomPad = 10 + (Platform.OS === 'web' ? 12 : insets.bottom);
+  // Respect the device's bottom safe-area inset everywhere. On web this now
+  // reads env(safe-area-inset-bottom) (viewport-fit=cover is set in App.js),
+  // and the 100dvh page height keeps the bar clear of the browser nav chrome.
+  // A small minimum guarantees breathing room when the inset is 0.
+  const bottomPad = 10 + Math.max(insets.bottom, Platform.OS === 'web' ? 8 : 0);
 
   return (
     <View

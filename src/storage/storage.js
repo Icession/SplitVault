@@ -139,20 +139,46 @@ export const getGoals = async () => {
 export const saveGoals = async (goals) => save('goals', { list: goals });
 
 export const getProfile = async () => {
-  const d = await readLocal('profile', { fullName: '', email: '', currency: 'PHP' });
+  const d = await readLocal('profile', {
+    firstName: '',
+    lastName: '',
+    fullName: '',
+    username: '',
+    email: '',
+    currency: 'PHP',
+  });
+  const firstName = d.firstName || '';
+  const lastName = d.lastName || '';
+  const fullName =
+    firstName || lastName ? `${firstName} ${lastName}`.trim() : d.fullName || '';
+  // Email always reflects the signed-up account, even for older profiles.
+  const email = d.email || (auth.currentUser ? auth.currentUser.email : '') || '';
   return {
-    fullName: d.fullName || '',
-    email: d.email || '',
+    firstName,
+    lastName,
+    fullName,
+    username: d.username || '',
+    email,
     currency: d.currency || 'PHP',
   };
 };
 
-export const saveProfile = async (profile) =>
-  save('profile', {
-    fullName: profile.fullName || '',
+export const saveProfile = async (profile) => {
+  const firstName = (profile.firstName || '').trim();
+  const lastName = (profile.lastName || '').trim();
+  const fullName =
+    firstName || lastName
+      ? `${firstName} ${lastName}`.trim()
+      : (profile.fullName || '').trim();
+  return save('profile', {
+    firstName,
+    lastName,
+    fullName,
+    username: (profile.username || '').trim(),
     email: profile.email || '',
     currency: profile.currency || 'PHP',
   });
+};
 
 export const getCategories = async () => {
   const d = await readLocal('categories', null);
