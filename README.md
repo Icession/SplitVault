@@ -2,7 +2,7 @@
 
 **Split your money smart.** SplitVault is a personal finance app for Android that helps you separate your money into two purposeful wallets — **Savings** and **Expense** — so you always know what's safe to spend and what's set aside. Built with React Native and a local-first architecture backed by cloud sync.
 
-> Currency: Philippine Peso (₱) · Platform: Android (React Native + Expo)
+> Platform: Android (React Native + Expo)
 
 ---
 
